@@ -1,0 +1,939 @@
+/* AL102 DFA Input String Acceptance Checker, visual revision 27.
+
+   The tape, state flow and trace are the original panels. The figure is the one
+   panel with a redesign: fewer labels, and step labels that the walk fills in.
+   Colour and type live in token blocks (:root and the three theme blocks).
+   Component rules use tokens only: no hex value appears outside a token block.
+
+   Themes (set on <html data-theme>):
+     no attribute   follow the operating system (Textbook light, or Night dark)
+     "light"        Textbook
+     "dark"         Night
+     "contrast"     High contrast
+
+   Motion: entrances and feedback use transform and opacity. The arrows and the
+   highlighter also animate stroke-dashoffset and background-size, because a
+   line that is drawn needs them. All motion sits inside
+   prefers-reduced-motion: no-preference. Nothing loops. Reduced motion gets a
+   static state, not shorter durations. */
+
+:root {
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Shape, layout and motion tokens. Not colours, so they sit outside the theme blocks. */
+  --radius: 2px;
+  /* Tallest a scrolling list may grow before it scrolls inside its own frame. Both
+     lists read this one value, so they stop at the same height. */
+  --list-max: 320px;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 150ms;
+  --dur-base: 240ms;
+  /* Page reveal, after the title lands in the header: a short hold, then each
+     container in reading order, one step apart. */
+  --dur-reveal: 420ms;
+  --reveal-hold: 260ms;
+  --reveal-step: 120ms;
+
+  /* Textbook (light) */
+  --paper: #F2F1EC;
+  --surface: #FFFFFF;
+  --line: #DEDBD0;            /* graph paper. Decorative only. */
+  --ink: #14181F;
+  --graphite: #4B5563;
+  --highlight: #F2B705;       /* the reading cell and the active row */
+  --on-highlight: var(--ink);
+  --accept: #0B6B45;
+  --reject: #B3261E;
+  --focus: #1D4ED8;
+  --rule: #C9C5B8;            /* dots on the figure plate. Decorative only. */
+  --shadow: rgba(20, 24, 31, 0.18);
+  color-scheme: light;
+}
+
+/* Night, following the operating system when no theme is chosen */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --paper: #0E1116;
+    --surface: #151A21;
+    --line: #1B222B;
+    --ink: #E6EAF0;
+    --graphite: #9AA5B4;
+    --highlight: #F5B82E;
+    --on-highlight: #0E1116;
+    --accept: #5CC79F;
+    --reject: #F28E87;
+    --focus: #8AB4FF;
+    --rule: #2A323D;
+    --shadow: rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+
+/* Night, chosen explicitly */
+:root[data-theme="dark"] {
+  --paper: #0E1116;
+  --surface: #151A21;
+  --line: #1B222B;
+  --ink: #E6EAF0;
+  --graphite: #9AA5B4;
+  --highlight: #F5B82E;
+  --on-highlight: #0E1116;
+  --accept: #5CC79F;
+  --reject: #F28E87;
+  --focus: #8AB4FF;
+  --rule: #2A323D;
+  --shadow: rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+/* High contrast: black and white. The graph paper disappears, because it carries no information. */
+:root[data-theme="contrast"] {
+  --paper: #FFFFFF;
+  --surface: #FFFFFF;
+  --line: #FFFFFF;
+  --ink: #000000;
+  --graphite: #333333;
+  --highlight: #FFD500;
+  --on-highlight: #000000;
+  --accept: #00502F;
+  --reject: #9E0000;
+  --focus: #0037B0;
+  --rule: #6B6B6B;
+  --shadow: rgba(0, 0, 0, 0);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; color: var(--ink); background-color: var(--paper);
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-attachment: fixed;
+  font: 400 16px/1.55 var(--sans);
+}
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Page and title */
+.page { max-width: 1280px; margin: 0 auto; padding: 24px 16px 128px; }
+@media (min-width: 640px) { .page { padding: 32px 24px 136px; } }
+
+.page-head { margin-bottom: 28px; padding-bottom: 18px; border-bottom: 3px solid var(--ink); }
+/* The box is its text, as the intro title's box is. The intro hands its title to this
+   heading by a view transition that morphs one box into the other, and a full-width
+   block would stretch the intro word across the whole header while it fades. */
+.page-head h1 {
+  font: 800 clamp(2rem, 4.6vw, 3.2rem)/1.04 var(--sans);
+  letter-spacing: -0.03em; margin: 0 0 10px; max-width: 18ch; width: fit-content;
+}
+.page-head p { margin: 0; font-size: 17px; color: var(--graphite); max-width: 60ch; }
+/* "101" sits on a full highlight block, so its text is on-highlight in every theme. */
+.accent {
+  position: relative; isolation: isolate; color: var(--on-highlight); padding: 0 0.12em; font-weight: 600;
+}
+.accent::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; background: var(--highlight);
+  transform-origin: left center;
+}
+
+/* Workspace: rail and stage. One column below 1120px, rail first. */
+.workspace { display: block; }
+.rail, .stage { display: grid; gap: 24px; min-width: 0; }
+.stage { margin-top: 24px; }
+@media (min-width: 1120px) {
+  /* The rail sticks so it stays beside the figure while the page scrolls.
+     `position: absolute` cannot do this: an absolutely positioned box is laid
+     out once and then travels with the document, so the rail slid off the top
+     of the screen the moment the reader scrolled. Sticky needs the rail to stay
+     in flow, so the workspace is a two-column grid again and `align-items: start`
+     keeps each column sized to its own content.
+
+     Sticking a box taller than the viewport hides its own bottom with no way to
+     reach it, so the rail is capped to the viewport and allowed to scroll in that
+     one case. `overflow-y: auto` draws no scrollbar while the content fits, which
+     is the normal case: the rail is about 713px and a desktop viewport is taller. */
+  .workspace { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 36px; align-items: start; }
+  .rail {
+    position: sticky; top: 16px;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    padding: 4px 6px 6px 4px;
+  }
+  .stage { margin-top: 0; }
+}
+/* Two columns from 1200px: the figure, the tape, the state flow and the tests
+   span the stage. The trace and the transition table share a row. Reading order is the tab order. */
+@media (min-width: 1200px) {
+  .stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; align-items: start; }
+  .stage > .panel--figure,
+  .stage > .panel--tape,
+  .stage > .panel--flow,
+  .stage > .panel--tests { grid-column: 1 / -1; }
+
+  /* Execution Steps and Transition Function share a row. Both panels stretch to the
+     height of the taller one, so their top and bottom edges meet. The step list has
+     no height of its own here: it takes the space the row leaves under its heading,
+     and scrolls inside that space. The Transition Function is never clipped. */
+  .stage > .panel--steps,
+  .stage > .panel--ref { align-self: stretch; }
+  .panel--steps { display: flex; flex-direction: column; }
+  .panel--steps > .scroll--list { flex: 1 1 0; min-height: 0; max-height: none; }
+}
+
+/* Panels are boards with a channel tag. The tag is the heading. */
+.panel {
+  position: relative; min-width: 0;
+  background: var(--surface); border: 1px solid var(--graphite); border-radius: var(--radius);
+  padding: 34px 18px 18px;
+}
+@media (max-width: 639px) { .panel { padding: 32px 14px 14px; } }
+.panel > h2 {
+  position: absolute; left: -1px; top: -1px; margin: 0;
+  background: var(--ink); color: var(--paper);
+  font: 600 12px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 7px 10px 6px;
+}
+
+/* Diagram switch: a two-part control pinned to the top-right of the Figure panel,
+   mirroring the "Figure" tab on the left so the two read as one header bar. It
+   sits above the plate, so it cannot cover a state, an arrow or a label. */
+.seg {
+  position: absolute; right: -1px; top: -1px; margin: 0;
+  display: inline-flex; border: 1px solid var(--graphite);
+  border-radius: var(--radius); overflow: hidden; background: var(--surface);
+}
+.seg__btn {
+  margin: 0; padding: 7px 12px 6px; min-height: 0;
+  border: 0; border-left: 1px solid var(--graphite);
+  background: var(--surface); color: var(--graphite); cursor: pointer;
+  font: 600 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.seg__btn:first-child { border-left: 0; }
+.seg__btn:hover { color: var(--ink); background: var(--paper); }
+.seg__btn.is-on { background: var(--ink); color: var(--surface); }
+.seg__btn:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+/* Input */
+.input-row { display: flex; flex-direction: column; gap: 18px; }
+.field label { display: block; font: 600 14px/1.3 var(--sans); margin-bottom: 6px; }
+.field input {
+  display: block; width: 100%; min-height: 44px; padding: 10px 12px;
+  font: 500 20px/1.2 var(--mono); letter-spacing: 0.12em;
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--graphite); border-radius: var(--radius);
+}
+.field input:focus { border-color: var(--focus); }
+.field input[aria-invalid="true"] { border-color: var(--reject); border-width: 2px; }
+.field input:disabled { opacity: 0.6; }
+.help { margin: 6px 0 0; font-size: 14px; color: var(--graphite); }
+
+.btn-row { display: flex; gap: 10px; }
+.btn-row .btn { flex: 1 1 auto; }
+
+/* Buttons are square and stamped */
+.btn {
+  min-height: 44px; padding: 0 18px; border-radius: var(--radius);
+  font: 600 15px/1 var(--sans); cursor: pointer; white-space: nowrap;
+}
+.btn:disabled { cursor: default; opacity: 0.55; }
+.btn--primary { background: var(--ink); color: var(--surface); border: 1px solid var(--ink); }
+.btn--secondary { background: transparent; color: var(--ink); border: 1px solid var(--graphite); }
+.btn--link {
+  min-height: 44px; padding: 0 14px; background: transparent; color: var(--ink);
+  border: 1px dashed var(--graphite); border-radius: var(--radius); font: 500 15px/1 var(--mono);
+}
+.btn--primary:not(:disabled):hover { background: var(--graphite); border-color: var(--graphite); }
+.btn--secondary:not(:disabled):hover { background: var(--paper); }
+.btn--link:not(:disabled):hover { background: var(--paper); border-style: solid; }
+.examples { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--graphite); font-size: 14px; margin-top: 18px; }
+.examples > span { flex: 0 0 100%; }
+
+/* Validation error */
+.error {
+  border: 2px solid var(--reject); border-radius: var(--radius);
+  padding: 12px 14px; margin-bottom: 14px; background: var(--surface);
+}
+.error[hidden] { display: none; }
+.error p { margin: 0 0 4px; }
+.error .err-head { color: var(--reject); font-weight: 600; }
+.error .icon { font-size: 16px; }
+
+/* Result: the verdict is the readout. Idle and invalid states use the same slot, muted. */
+.result { padding: 0; }
+.verdict {
+  margin: 0; padding-bottom: 10px; border-bottom: 3px solid var(--accept);
+  font: 800 clamp(2.3rem, 4vw, 3.3rem)/0.95 var(--sans); letter-spacing: -0.03em;
+  color: var(--accept);
+}
+.result.is-rejected .verdict { color: var(--reject); border-bottom-color: var(--reject); }
+.result--idle { color: var(--graphite); }
+.result--idle .verdict { color: var(--graphite); border-bottom: 3px solid var(--rule); font-size: clamp(1.6rem, 3vw, 2.2rem); }
+.icon { font-family: var(--sans); font-size: 20px; margin-right: 8px; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 16px 0 0; }
+.facts dt { font: 600 12px/1.8 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--graphite); }
+/* A long input has no spaces; without this it overflows the page at 320px. */
+.facts dd { margin: 0; font: 500 16px/1.8 var(--mono); overflow-wrap: anywhere; }
+.reason { margin: 14px 0 0; }
+
+/* Tape: cells sit on the paper; the reading cell takes the highlight. */
+.tape { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 8px; }
+.cell { display: flex; flex-direction: column; align-items: center; width: 52px; }
+.cell .sym {
+  width: 52px; height: 60px; display: grid; place-items: center;
+  font: 500 28px/1 var(--mono); font-variant-numeric: tabular-nums;
+  background: var(--paper); color: var(--ink);
+  border: 1px solid var(--graphite); border-radius: 4px;
+}
+.cell .idx { height: 16px; margin-top: 6px; font: 500 13px/16px var(--mono); color: var(--graphite); }
+/* The reading cell keeps an ink border, so it stays visible against the highlight. */
+.cell.is-reading .sym { background: var(--highlight); color: var(--on-highlight); border-color: var(--ink); }
+.cell.is-invalid .sym { border: 2px solid var(--reject); }
+.cell.is-invalid .mark { color: var(--reject); font-size: 13px; }
+@media (max-width: 639px) {
+  .cell { width: 40px; }
+  .cell .sym { width: 40px; height: 50px; font-size: 24px; }
+}
+
+/* State flow: states are pills, joined by arrows. The final state is filled. */
+.flow { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 4px; }
+.flow li { display: flex; align-items: center; gap: 4px; }
+.flow li > span:not(.arrow):not(.vh) {
+  font: 500 16px/1 var(--mono); padding: 8px 12px;
+  border: 1px solid var(--graphite); border-radius: 999px;
+}
+.flow li.final > span:not(.vh) { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.flow .arrow { color: var(--graphite); font: 400 16px/1 var(--sans); }
+
+/* Scroll regions and tables. Rows are ruled. The region edge is graphite, so it
+   is a visible boundary. A table that is not a list grows to fit its rows.
+
+   A list (Execution Steps and Test Cases) is a scroll region of its own, and only
+   its rows move. The panel heading and the note above the list sit outside the
+   region, so they stay put, and the column header is sticky inside it. The wheel
+   stops at the list's ends (overscroll-behavior), so scrolling a list does not
+   also scroll the page behind it. */
+.scroll { border: 1px solid var(--graphite); border-radius: var(--radius); background: var(--surface); }
+.scroll--list {
+  max-height: var(--list-max);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; background: var(--surface); }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+thead th { background: var(--surface); font: 600 12px/1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--graphite); border-bottom: 2px solid var(--ink); }
+/* In a list the header stays at the top of the list while the rows move under it.
+   Sticky is scoped to a list on purpose: outside a scroll region it would pin the
+   header to the page and float it over the other panels.
+   A sticky cell only carries its own border with it when borders belong to the
+   cell. In the collapsed model the header's 2px rule is shared with the table and
+   stays behind when the header sticks, so the two lists use the separated model.
+   Their rules are bottom borders only, so nothing else visibly changes. */
+.scroll--list > table { border-collapse: separate; border-spacing: 0; }
+.scroll--list thead th { position: sticky; top: 0; z-index: 1; }
+/* At phone width the Test Cases table has five columns, and its narrowest possible
+   form is wider than the frame: "(empty)" and "accepted" cannot wrap. The lists take
+   less side padding there and the test values go one step smaller, so every column
+   fits its frame and no sideways scroll is needed. */
+@media (max-width: 639px) {
+  .scroll--list th,
+  .scroll--list td { padding-left: 5px; padding-right: 5px; }
+  #tests-body td { font-size: 13px; }
+  #tests-body .icon { margin-right: 4px; }
+}
+tbody tr:hover > td { background: var(--paper); }
+caption { text-align: left; font: 400 14px/1.4 var(--sans); color: var(--graphite); padding-bottom: 8px; }
+#trace-body td,
+#transition-table td,
+#transition-table th[scope="row"],
+#tests-body td { font-family: var(--mono); font-size: 14px; }
+.tag {
+  display: inline-block; margin-left: 8px; padding: 1px 8px;
+  font: 600 13px/1.5 var(--sans); border: 1px solid var(--ink); border-radius: var(--radius);
+}
+.pass { color: var(--accept); font-weight: 600; }
+.fail { color: var(--reject); font-weight: 600; }
+.tests-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 0 0 14px; }
+.tests-summary { margin: 0; }
+
+/* Figure: the machine on a dot plate. The plate does not scroll, so the drawing
+   is free to size itself to whatever space it has - there is no min-width floor,
+   because a floor here would push the page sideways instead of showing a
+   scrollbar inside the plate, which is the same defect in a worse place.
+
+   Consequence, stated plainly: the smallest label is 20 units in a 420-unit
+   viewBox, so it only renders at 14px once the drawing is 294px wide. The plate
+   is 86px narrower than the viewport (page + panel padding and the border), so
+   labels stay at or above 14px down to a 380px viewport, and go smaller than
+   14px on a phone-width screen. That is the price of never showing a scrollbar,
+   and it is the trade that was asked for. */
+.figure { margin: 0; }
+.figure .svg-box {
+  background-color: var(--paper);
+  background-image: radial-gradient(circle, var(--rule) 1.1px, transparent 1.6px);
+  background-size: 22px 22px; border: 1px solid var(--graphite); border-radius: var(--radius);
+  max-width: 100%;
+}
+.figure svg { display: block; width: 100%; max-width: 640px; height: auto; margin: 0 auto; }
+
+/* A trace of a long run is wider than the plate. It scrolls sideways rather than
+   shrinking: the step numbers, the small state labels and the arrow symbols all
+   keep the same size, which is the whole point of the professor's convention. A
+   chain squeezed into the plate would be unreadable, and an unreadable trace is
+   worse than one you have to scroll.
+   Only the trace view scrolls - the two-state diagram fits, so it needs no
+   scrollbar. script.js sets the drawing's pixel width from the viewBox, so one
+   viewBox unit is one pixel here and the scale never changes. */
+:root[data-diagram="longer"] .figure .svg-box { overflow-x: auto; }
+:root[data-diagram="longer"] .figure svg { max-width: none; width: auto; min-width: 0; margin: 0; }
+.figure svg text { font-family: var(--mono); fill: var(--ink); }
+.figure .node-label { font-size: 24px; }
+.figure .edge-label { font-size: 20px; }
+.figure .core { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+/* The accepting state is drawn with a double ring. That ring is part of the
+   machine's definition, so it is a static property of the figure and never an
+   effect of a check. */
+.figure .ring { fill: none; stroke: var(--ink); stroke-width: 2; }
+.figure .edge { fill: none; stroke: var(--ink); stroke-width: 2; }
+.figure marker path { fill: var(--ink); }
+.figure .edge--taken { stroke: var(--focus); stroke-width: 4; }
+
+/* Idle figure: the shapes recede to graphite. The text is never dimmed. */
+.figure svg.is-dim .core,
+.figure svg.is-dim .ring,
+.figure svg.is-dim .edge { stroke: var(--graphite); }
+.figure svg.is-dim marker path { fill: var(--graphite); }
+/* Walk token: moved by transform along the taken edge. Hidden at rest. */
+.figure .walk-token { fill: var(--focus); stroke: var(--surface); stroke-width: 2; opacity: 0; }
+.figure .walk-token.is-moving { opacity: 1; }
+/* a hop across a gap in the path: fade out, set down, fade in */
+.figure .walk-token.is-hop { opacity: 0; }
+/* Pulse ring: silent at rest; the motion block runs it once per arrival */
+.figure .pulse { fill: none; stroke: var(--focus); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+/* Arrow labels: static, and always visible. Each arrow carries the input symbol
+   that causes it, because that is part of the machine's definition rather than a
+   result of a check. */
+.figure .edge-label { opacity: 1; }
+/* The longer view: a trace, so each node carries two labels. The large one is the
+   step counter drawn inside the circle; the small one underneath is the state the
+   machine was really in, and it is that one which decides acceptance. They are
+   styled separately precisely so the step number can never be read as a state. */
+/* Trace playback. The arrows are the only thing that moves: each one is a shaft
+   revealed along its own path plus a head carried to the tip of that shaft. Both
+   are driven from one progress value, so the head can never be anywhere but the
+   end of the line it belongs to.
+
+   One head shape and one shaft weight are declared once and shared by every
+   arrow in the diagram, which is what stops tips and thicknesses drifting apart
+   between the straight transitions and the curves into qd. */
+.btn--sm { min-height: 32px; padding: 0 12px; font: 500 13px/1 var(--mono); }
+
+:root[data-diagram="longer"] .figure .arrow__shaft {
+  fill: none; stroke: var(--graphite); stroke-width: 2; stroke-linecap: butt;
+  transition: stroke 260ms linear, opacity 260ms linear;
+}
+:root[data-diagram="longer"] .figure .arrow__head {
+  fill: var(--graphite); stroke: none;
+  transition: fill 260ms linear, opacity 160ms linear;
+}
+/* Only the head is ever filled. Shafts stay fill:none at every state, because a
+   fill on an open centreline curve implicitly closes it and floods the region
+   between the curve and its chord. */
+:root[data-diagram="longer"] .figure .arrow.is-active .arrow__shaft { stroke: var(--focus); stroke-width: 2.5; }
+:root[data-diagram="longer"] .figure .arrow.is-active .arrow__head { fill: var(--focus); }
+:root[data-diagram="longer"] .figure .arrow.is-complete .arrow__shaft { stroke: var(--focus); }
+:root[data-diagram="longer"] .figure .arrow.is-complete .arrow__head { fill: var(--focus); }
+:root[data-diagram="longer"] .figure .arrow.is-historical .arrow__shaft { stroke: var(--graphite); }
+:root[data-diagram="longer"] .figure .arrow.is-historical .arrow__head { fill: var(--graphite); }
+:root[data-diagram="longer"] .figure .arrow.is-historical { opacity: 0.75; }
+:root[data-diagram="longer"] .figure .arrow-label {
+  font-family: var(--mono); font-size: 20px; fill: var(--graphite);
+}
+:root[data-diagram="longer"] .figure .arrow--dump.is-complete .arrow__shaft { stroke: var(--reject); }
+:root[data-diagram="longer"] .figure .arrow--dump.is-complete .arrow__head { fill: var(--reject); }
+
+
+/* The accepting ring grown over the final node when the run ends in q1. It is the
+   only ring the trace view ever draws, and it forms rather than appearing. */
+:root[data-diagram="longer"] .figure .ring--accept {
+  fill: none; stroke: var(--focus); stroke-width: 2.5;
+  transform-box: fill-box; transform-origin: center;
+}
+:root[data-diagram="longer"] .figure .node.is-final.is-accepted .core { fill: var(--focus); }
+:root[data-diagram="longer"] .figure .node.is-final.is-accepted text.node-label { fill: var(--on-highlight); }
+:root[data-diagram="longer"] .figure .node.is-final.is-accepted .node-trace { fill: var(--ink); font-weight: 700; }
+
+/* The step sequence. Pending steps stay visible at full strength - the reader must
+   be able to see the whole run, not just the part that has happened. */
+:root[data-diagram="longer"] .figure .node .core { stroke: var(--focus); }
+:root[data-diagram="longer"] .figure .node.is-pending circle.core { stroke: var(--graphite); opacity: 0.75; }
+:root[data-diagram="longer"] .figure .node.is-reached circle.core { fill: var(--paper); }
+:root[data-diagram="longer"] .figure .node.is-current circle.core { fill: var(--focus); }
+:root[data-diagram="longer"] .figure .node.is-current text.node-label { fill: var(--on-highlight); }
+:root[data-diagram="longer"] .figure .node.is-final circle.core { fill: var(--focus); }
+:root[data-diagram="longer"] .figure .node .node-trace { fill: var(--graphite); }
+:root[data-diagram="longer"] .figure .node.is-current .node-trace,
+:root[data-diagram="longer"] .figure .node.is-final .node-trace { fill: var(--ink); font-weight: 700; }
+
+
+.figure-legend {
+  margin: 0 0 8px; text-align: right;
+  font: 500 13px/1.3 var(--mono); color: var(--focus);
+}
+.figure-result {
+  margin: 10px 0 0; text-align: center;
+  font: 500 15px/1.4 var(--mono); color: var(--ink);
+}
+.figure-result[data-result="rejected"] { color: var(--reject); }
+.figure-result[data-result="accepted"] { color: var(--accept); }
+.figure-result[data-result="invalid"] { color: var(--graphite); }
+/* Type sizes for the trace view, and the arrowhead colour. The stroke and label
+   COLOURS for the trace are decided by the state block above, which has to know
+   the difference between an arrow the run took, an arrow it is about to take, and
+   a dead-state reference arrow. Re-asserting a single accent here is what used to
+   paint the reference arrows the same blue as the real ones. */
+:root[data-diagram="longer"] .figure .node-label { font-size: 22px; }
+:root[data-diagram="longer"] .figure .node-trace { font-family: var(--mono); font-size: 15px; }
+:root[data-diagram="longer"] .figure marker path { fill: var(--focus); }
+:root[data-diagram="longer"] .figure svg.is-dim .edge { stroke: var(--graphite); }
+:root[data-diagram="longer"] .figure svg.is-dim marker path { fill: var(--graphite); }
+
+/* Active row in the transition table: highlight fill, ink text, ink inset edge */
+#transition-table tr.is-active > th,
+#transition-table tr.is-active > td {
+  background: var(--highlight); color: var(--on-highlight);
+  font-weight: 600; box-shadow: inset 0 0 0 2px var(--on-highlight);
+}
+#transition-table th[scope="row"] { font-weight: 400; }
+#dfa-reference .defn-block h2 {
+  font: 600 12px/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--graphite); margin: 24px 0 10px;
+}
+
+/* Definition list */
+.defn { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 18px; margin: 0; }
+.defn dt { font: 600 12px/1.8 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--graphite); }
+.defn dd { margin: 0; font: 400 15px/1.8 var(--mono); }
+
+/* Intro: a 12-second motion-graphics opening that covers the page once per launch.
+   Each element is timed by its own --at value, and the overlay fades out at the end.
+   script.js removes it when the time is up, or sooner on a click, a key or Skip.
+   Under reduced motion it is not shown at all: a still screen for twelve seconds
+   would be the wrong trade. Classes are prefixed intro so none can meet the checker's. */
+.intro {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; overflow-y: auto; padding: 24px 16px; cursor: pointer;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+/* margin: auto centres the stage without cutting off its top when it is taller than
+   the window, which align-items: center on the overlay would do. */
+.intro__stage {
+  margin: auto; width: 100%; max-width: 520px;
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  text-align: center;
+}
+/* Screen readers get the name once; the letters themselves are hidden from them. */
+.intro__sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+.intro__title {
+  position: relative; margin: 0;
+  font: 800 clamp(2.6rem, 9vw, 4.2rem)/1 var(--sans);
+  letter-spacing: -0.03em; color: var(--ink);
+}
+/* The yellow bar is an underline just below the baseline, so letters never sit on it. */
+.intro__title::after {
+  content: ""; position: absolute;
+  left: -0.06em; right: -0.06em; bottom: -0.06em; height: 0.2em;
+  background: var(--highlight); transform-origin: center;
+}
+.intro-letter { display: inline-block; }
+.intro__tagline { margin: 0; font-size: 17px; line-height: 1.6; color: var(--graphite); }
+.intro-word { display: inline-block; }
+.intro-accent {
+  color: var(--on-highlight); padding: 0 0.12em; border-radius: 2px;
+  background: linear-gradient(var(--highlight), var(--highlight)) no-repeat left center / 0% 100%;
+}
+.intro__tape { display: flex; gap: 8px; }
+.intro-cell {
+  position: relative; display: grid; place-items: center; overflow: hidden;
+  width: 52px; height: 60px;
+  background: var(--paper); border: 1px solid var(--graphite); border-radius: 4px;
+}
+.intro-lamp { position: absolute; inset: 0; background: var(--highlight); }
+.intro-digit { position: relative; font: 500 28px/1 var(--mono); color: var(--ink); }
+.intro__machine { display: block; width: min(84vw, 300px); height: auto; overflow: visible; }
+.intro__machine text { font: 500 20px/1 var(--mono); fill: var(--ink); }
+.intro__machine .intro-edge { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+.intro__machine .intro-head { fill: var(--ink); }
+.intro__machine .intro-hl { fill: none; stroke: var(--focus); stroke-width: 4; stroke-linecap: round; }
+.intro__machine .intro-core { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.intro__machine .intro-ring { fill: none; stroke: var(--ink); stroke-width: 2; }
+.intro__machine .intro-token { fill: var(--highlight); stroke: var(--ink); stroke-width: 1.5; }
+.intro__machine .intro-ripple { fill: none; stroke: var(--focus); stroke-width: 2; }
+.intro__verdict { margin: 0; }
+.intro__verdict span {
+  display: inline-block; padding: 6px 16px 4px; border: 3px solid var(--accept); border-radius: 6px;
+  font: 800 clamp(2rem, 6vw, 2.8rem)/1 var(--sans); letter-spacing: -0.03em;
+  text-transform: uppercase; color: var(--accept);
+}
+.intro__note { margin: 0; font-size: 15px; color: var(--graphite); }
+.intro__skip {
+  min-height: 44px; padding: 0 18px; border-radius: var(--radius); cursor: pointer;
+  background: transparent; color: var(--ink); border: 1px solid var(--graphite);
+  font: 600 14px/1 var(--sans);
+}
+.intro__skip:hover { background: var(--surface); }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro { display: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes intro-fade  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes intro-rise  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes intro-up    { from { opacity: 0; transform: translateY(0.5em); } to { opacity: 1; transform: none; } }
+  @keyframes intro-slide { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+  @keyframes intro-pop   { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: none; } }
+  @keyframes intro-wipe  { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @keyframes intro-swipe { from { opacity: 0; background-size: 0% 100%; } to { opacity: 1; background-size: 100% 100%; } }
+  /* a stroke traced from start to end: the edge is one unit long (pathLength 1) */
+  @keyframes intro-draw  { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  /* lights for its reading, then goes out */
+  @keyframes intro-lit {
+    0%   { opacity: 0; }
+    8%   { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  /* the digit turns to the dark ink that sits on the lit lamp, then back */
+  @keyframes intro-ink {
+    0%   { color: var(--ink); }
+    8%   { color: var(--on-highlight); }
+    88%  { color: var(--on-highlight); }
+    100% { color: var(--ink); }
+  }
+  /* a token that travels an edge is visible only while it moves */
+  @keyframes intro-blip {
+    0%   { opacity: 0; }
+    6%   { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes intro-ripple {
+    0%   { opacity: 0; transform: scale(1); }
+    12%  { opacity: 0.9; }
+    100% { opacity: 0; transform: scale(1.9); }
+  }
+  /* a rubber stamp: large and faint, it lands with a slight overshoot and a tilt */
+  @keyframes intro-stamp {
+    0%   { opacity: 0; transform: scale(1.8) rotate(-12deg); }
+    60%  { opacity: 1; transform: scale(0.94) rotate(-3deg); }
+    100% { opacity: 1; transform: scale(1) rotate(-3deg); }
+  }
+  /* The highlighter withdraws before anything else moves: it scales back to
+     nothing from the left, the same way it arrived. */
+  @keyframes intro-underline-out {
+    from { transform: scaleX(1); }
+    to   { transform: scaleX(0); }
+  }
+  /* Everything except the title clears out, so the words travel alone. */
+  @keyframes intro-clear {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+
+  /* Timeline, in seconds. Title letters 0.2-0.7, highlighter 1.0, tagline 0.9-2.2 with
+     the accent swipe at 2.2, tape 2.0-2.3, states 2.7 and 3.0, edges drawn 2.9-5.3,
+     the walk 6-9 (edge lit, token moves, ripple on arrival), verdict stamp 9.4,
+     note 9.9, handover 11.2-12.0 (the title travels into the page header). */
+  /* No fade-in on the overlay: it is opaque from its first frame, so the page under it
+     cannot show through while it arrives. */
+  .intro-letter { animation: intro-up 520ms var(--ease-out) var(--at) both; }
+  .intro-word { animation: intro-rise 420ms var(--ease-out) var(--at) both; }
+  .intro-accent { opacity: 0; animation: intro-swipe 500ms var(--ease-out) var(--at) both; }
+  .intro-cell { animation: intro-slide 360ms var(--ease-out) var(--at) both; }
+  .intro-lamp { opacity: 0; animation: intro-lit 1000ms linear var(--at) both; }
+  .intro-digit { animation: intro-ink 1000ms linear var(--at) both; }
+
+  .intro__machine .intro-state {
+    transform-box: fill-box; transform-origin: center;
+    animation: intro-pop 420ms var(--ease-overshoot) var(--at) both;
+  }
+  .intro__machine .intro-edge {
+    stroke-dasharray: 1; stroke-dashoffset: 1;
+    animation: intro-draw 600ms var(--ease-out) var(--at) both;
+  }
+  /* each head appears when its edge has been drawn, 0.6s after the edge starts */
+  .intro__machine .intro-head { opacity: 0; animation: intro-fade 200ms ease-out calc(var(--at) + 0.6s) both; }
+  .intro__machine .intro-label {
+    transform-box: fill-box; transform-origin: center; opacity: 0;
+    animation: intro-pop 360ms var(--ease-overshoot) var(--at) both;
+  }
+  .intro__machine .intro-hl { opacity: 0; animation: intro-lit 1000ms linear var(--at) both; }
+  .intro__machine .intro-token { opacity: 0; animation: intro-blip 900ms linear var(--at) both; }
+  .intro__machine .intro-ripple {
+    opacity: 0; transform-box: fill-box; transform-origin: center;
+    animation: intro-ripple 800ms ease-out var(--at) both;
+  }
+
+  .intro__verdict span { opacity: 0; animation: intro-stamp 520ms var(--ease-out) 9.4s both; }
+  .intro__note { opacity: 0; animation: intro-fade 500ms ease-out 9.9s both, intro-clear 420ms ease-in 10600ms forwards; }
+  .intro__skip { opacity: 0; animation: intro-fade 400ms ease-out 0.5s both, intro-clear 420ms ease-in 10600ms forwards; }
+
+  /* Outro, in the order the words are spoken: the highlighter pulls back at
+     10.4-10.74, everything else clears at 10.6-11.02, and the view transition
+     does not begin until 11.2. That leaves roughly half a second with only the
+     title on the plate before it starts to travel. */
+  .intro__title::after {
+    /* The exit fills forwards only. A backwards fill would hold its start state, full
+       width, from page load and sit over the wipe-in's start. */
+    animation: intro-wipe 520ms var(--ease-out) 1s both,
+               intro-underline-out 340ms var(--ease-out) 10400ms forwards;
+  }
+  .intro__tagline,
+  .intro__tape,
+  .intro__machine,
+  .intro__verdict { animation: intro-clear 420ms ease-in 10600ms forwards; }
+
+  /* The title's handover into the page header is a view transition, so the words
+     travel and resize rather than cut. 800ms matches INTRO_HANDOVER_MS. */
+  ::view-transition-group(decider-title) { animation-duration: 800ms; animation-timing-function: var(--ease-inout); }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 800ms; }
+}
+
+/* Scroll is locked while the intro is up: the plate is a fixed overlay, so a page
+   that scrolls behind it would slide the whole checker out from under the reader
+   the moment they touched the wheel. `overflow: hidden` on <html> only stops the
+   reader's own wheel, touch and keyboard; the body is pinned with `position:
+   fixed` because that also stops the document being scrolled programmatically,
+   which `overflow: hidden` and even `overflow: clip` both allow on the root. */
+/* A classic scrollbar takes its width from the layout. Reserving the gutter from the
+   start means the content does not move when the page starts to scroll. */
+html { scrollbar-gutter: stable; }
+html.is-intro-locked { overflow: hidden; overscroll-behavior: none; }
+html.is-intro-locked body { position: fixed; inset: 0; width: 100%; overflow: hidden; }
+
+/* Page reveal. While the title travels into the header, the content around it is
+   held back, so the words arrive first. The h1 is never held: it is the element the
+   transition morphs into. When the title has landed and the class comes off, the held
+   parts come in one container at a time, in reading order: the subtitle, each panel,
+   then the Display button. --rv sets each one's place in that order, and the hold lets
+   the title settle before the first moves. The held state has no transition, so
+   nothing fades out under the intro. Reduced motion never sets the class. */
+.page-head > p,
+.panel,
+.fab {
+  transition: opacity var(--dur-reveal) var(--ease-out), transform var(--dur-reveal) var(--ease-out);
+  transition-delay: calc(var(--reveal-hold) + var(--rv, 0) * var(--reveal-step));
+}
+body.is-handing-over .page-head > p,
+body.is-handing-over .panel,
+body.is-handing-over .fab {
+  opacity: 0; transform: translateY(8px); transition: none;
+}
+.page-head > p { --rv: 0; }
+.panel--input { --rv: 1; }
+.panel--result { --rv: 2; }
+.panel--figure { --rv: 3; }
+.panel--tape { --rv: 4; }
+.panel--flow { --rv: 5; }
+.panel--steps { --rv: 6; }
+.panel--ref { --rv: 7; }
+.panel--tests { --rv: 8; }
+.fab { --rv: 9; }
+
+/* Display: one floating button at the end of the reading order. Its menu opens
+   above it and holds the appearance and the flow timing. The focus ring sits
+   outside the pill, on the page, so it meets 3:1 in every theme. */
+.fab { position: fixed; right: 16px; bottom: 16px; z-index: 10; }
+@media (min-width: 640px) { .fab { right: 24px; bottom: 24px; } }
+.fab-btn {
+  min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--ink); color: var(--surface); box-shadow: 0 8px 24px var(--shadow);
+  font: 600 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.fab-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.fab-menu {
+  position: absolute; right: 0; bottom: calc(100% + 10px);
+  width: min(264px, calc(100vw - 32px));
+  display: grid; gap: 16px; padding: 16px;
+  background: var(--surface); border: 1px solid var(--graphite); border-radius: var(--radius);
+  box-shadow: 0 8px 24px var(--shadow);
+}
+.fab-menu[hidden] { display: none; }
+.menu-item { display: grid; gap: 6px; }
+.menu-item label {
+  font: 600 12px/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--graphite);
+}
+.menu-item select {
+  width: 100%; min-height: 44px; padding: 0 34px 0 12px;
+  font: 500 15px/1 var(--sans); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--graphite); border-radius: var(--radius);
+}
+/* The timing has no effect without a walk, so under reduced motion the menu says so. */
+.menu-note { margin: 0; font-size: 13px; color: var(--graphite); display: none; }
+@media (prefers-reduced-motion: reduce) { .menu-note { display: block; } }
+
+/* Safety net: when reduced motion is requested, every transition and animation
+   duration is zero. The motion block below is the main control. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   Motion, and only when the user has not asked for reduced motion. Order: the
+   title, the rail, the stage top to bottom, then the machine (nodes, then edges,
+   then labels). The walk runs after the entrance. The walk token is the only
+   thing that moves during a check.
+
+   Timing comes from three tokens in :root: --dur-fast for feedback, --dur-base for
+   entrances and fades, and --ease-out for every entrance curve. A literal here is
+   either a stagger offset (the delay between items) or a one-off choice, so a
+   retune starts from the tokens and not from the rules.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes tag-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes swipe-x {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+  @keyframes node-in {
+    from { opacity: 0; transform: scale(0.85); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes stamp {
+    from { opacity: 0; transform: scale(1.12) rotate(-3deg); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes slide {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes type-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* Title */
+  .page-head h1 { animation: rise 600ms var(--ease-out) 60ms backwards; }
+  .accent::before { animation: swipe-x 600ms var(--ease-inout) 420ms backwards; }
+
+  /* Panels, the subtitle and the Display button are revealed in turn by the page
+     reveal, not on load. Each channel tag still slides in after its board. */
+  .panel > h2 { animation: tag-in 260ms var(--ease-out) backwards; }
+
+  /* Controls */
+  .field label { animation: fade var(--dur-base) var(--ease-out) 220ms backwards; }
+  .field input { animation: fade var(--dur-base) var(--ease-out) 240ms backwards; }
+  .help { animation: fade var(--dur-base) var(--ease-out) 280ms backwards; }
+  .btn { animation: fade var(--dur-base) var(--ease-out) 260ms backwards; transition: opacity var(--dur-fast) var(--ease-out), transform 120ms var(--ease-out); }
+  .btn:not(:disabled):active { transform: translateY(1px); }
+  .examples { animation: fade var(--dur-base) var(--ease-out) 320ms backwards; }
+
+  /* Result and error */
+  .verdict { animation: stamp 360ms var(--ease-overshoot) backwards; transform-origin: left center; }
+  .result:not(.result--idle) .reason,
+  .facts dt,
+  .facts dd { animation: fade var(--dur-base) var(--ease-out) 200ms backwards; }
+  .error { animation: slide 220ms var(--ease-out) backwards; }
+  .error p { animation: fade var(--dur-base) var(--ease-out) 80ms backwards; }
+  .error .icon { animation: stamp 320ms var(--ease-overshoot) backwards; }
+
+  /* Tape: cells type in left to right */
+  .cell { animation: type-in var(--dur-base) var(--ease-out) backwards; }
+  .cell:nth-child(2) { animation-delay: 24ms; }
+  .cell:nth-child(3) { animation-delay: 48ms; }
+  .cell:nth-child(4) { animation-delay: 72ms; }
+  .cell:nth-child(5) { animation-delay: 96ms; }
+  .cell:nth-child(6) { animation-delay: 120ms; }
+  .cell:nth-child(7) { animation-delay: 144ms; }
+  .cell:nth-child(8) { animation-delay: 168ms; }
+  .cell:nth-child(9) { animation-delay: 192ms; }
+
+
+  /* The reading cell lifts as the walk reaches it. */
+  .cell .sym { transition: transform var(--dur-fast) var(--ease-out); }
+  .cell.is-reading .sym { transform: translateY(-4px); }
+
+  /* State flow: each state rises in turn */
+  .flow li { animation: rise var(--dur-base) var(--ease-out) backwards; }
+  .flow li:nth-child(2) { animation-delay: 40ms; }
+  .flow li:nth-child(3) { animation-delay: 80ms; }
+  .flow li:nth-child(4) { animation-delay: 120ms; }
+  .flow li:nth-child(5) { animation-delay: 160ms; }
+  .flow li:nth-child(6) { animation-delay: 200ms; }
+  .flow li:nth-child(7) { animation-delay: 240ms; }
+  .flow li:nth-child(8) { animation-delay: 280ms; }
+
+  /* Trace and test rows fade in as they arrive */
+  .scroll { animation: fade var(--dur-base) var(--ease-out) 280ms backwards; }
+  #trace-body tr,
+  #tests-body tr { animation: fade var(--dur-base) var(--ease-out) backwards; }
+  .tag { animation: fade var(--dur-base) var(--ease-out) 300ms backwards; }
+  .tests-row { animation: fade var(--dur-base) var(--ease-out) 360ms backwards; }
+
+  /* Figure: the plate fades in. Everything on it arrives under script.js, which
+     drives visibility from the input and from the check, so no entrance rule is
+     declared here: popIn() and drawIn() own those. */
+  .figure .svg-box { animation: fade var(--dur-base) var(--ease-out) 260ms backwards; }
+
+  /* Each arrival: the state swells a little and its pulse ring runs once */
+  .figure .core { transform-box: fill-box; transform-origin: center; transition: transform var(--dur-fast) var(--ease-out); }
+  .figure .walk-token { transition: opacity var(--dur-fast) var(--ease-out); }
+
+  /* Transition table and definitions */
+  #transition-table tbody tr { animation: fade var(--dur-base) var(--ease-out) 360ms backwards; }
+  caption { animation: fade var(--dur-base) var(--ease-out) 320ms backwards; }
+  .defn dt,
+  .defn dd { animation: fade var(--dur-base) var(--ease-out) 400ms backwards; }
+
+  /* The Display menu slides down into place when opened */
+  .fab-menu:not([hidden]) { animation: slide var(--dur-fast) var(--ease-out) backwards; }
+}
+
+/* Execution Steps: Container B. Its rows are generated from Python's steps and
+   are never confused with the machine's states. A row is hidden until the walk
+   reaches it, marked while it is the step being processed, and left readable
+   afterwards. */
+.step--pending { opacity: 0; }
+.step--current { background: color-mix(in srgb, var(--highlight) 18%, transparent); }
+.step--current .step-symbol,
+.step--current .step-state { font-weight: 600; color: var(--ink); }
+.step--done .step-state { color: var(--graphite); }
+.step-symbol { font-family: var(--mono); font-weight: 600; }
+#steps-body tr { transform-box: border-box; }
+
+/* Execution Steps (Container B). Rows are generated from Python's steps and are
+   never confused with the machine's states: a row is hidden until the walk
+   reaches it, marked while it is the step being processed, and left readable
+   afterwards. */
+.step--pending { opacity: 0; }
+.step--current { background: var(--rule); }
+.step--current .step-symbol,
+.step--current .step-state { font-weight: 600; color: var(--ink); }
+.step--done .step-state { color: var(--graphite); }
+.step-symbol { font-family: var(--mono); font-weight: 600; }
+#steps-body tr { transform-box: border-box; }

@@ -1,0 +1,477 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AL102 — DFA Input String Acceptance Checker</title>
+<style>
+  :root{
+    --paper:#ffffff; --surface:#f7f7f5; --ink:#14181f; --graphite:#4b5563;
+    --rule:#d8d5cc; --accent:#0b6b45; --reject:#b3261e; --focus:#1d4ed8;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.6 var(--sans);}
+  .page{max-width:980px;margin:0 auto;padding:48px 24px 96px;}
+  h1{font:600 30px/1.2 var(--serif);margin:0 0 8px}
+  .sub{color:var(--graphite);margin:0 0 8px;font-size:16px}
+  h2{font:600 20px/1.3 var(--sans);margin:48px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--rule)}
+  h3{font:600 15px/1.4 var(--sans);margin:24px 0 8px}
+  p{margin:0 0 12px;max-width:72ch}
+  code,pre,.mono{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace}
+  figure{margin:0 0 16px}
+  figcaption{font-size:14px;color:var(--graphite);margin-top:8px;max-width:76ch}
+  svg.diagram{display:block;width:100%;max-width:720px;height:auto}
+  table{border-collapse:collapse;width:100%;max-width:680px;margin:0 0 8px;font-size:15px}
+  caption{text-align:left;color:var(--graphite);padding-bottom:6px;font-size:14px}
+  th,td{border:1px solid var(--rule);padding:8px 12px;text-align:left}
+  thead th{background:var(--surface)}
+  .panel{border:1px solid var(--rule);border-radius:6px;padding:20px 24px;margin:0 0 20px;background:var(--surface)}
+  .todo{border-left:4px solid #ffd84d;background:var(--paper);padding:14px 18px;border-radius:0 4px 4px 0}
+  .todo strong{display:block;margin-bottom:4px}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}
+  button{font:600 14px var(--sans);padding:8px 14px;border-radius:4px;border:1px solid var(--graphite);
+    background:var(--paper);color:var(--ink);cursor:pointer;min-height:40px}
+  button:hover{background:#eceae3}
+  button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+  .note{font-size:14px;color:var(--graphite)}
+  ul{max-width:72ch} li{margin-bottom:6px}
+  .kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 18px;margin:0 0 12px;font-size:15px}
+  .kv dt{font-weight:600}
+  .kv dd{margin:0;font-family:var(--serif)}
+  .token{display:none}
+  pre.xml{font-size:11px;line-height:1.45;background:var(--surface);border:1px solid var(--rule);
+    padding:12px;border-radius:4px;max-height:280px;overflow:auto;white-space:pre}
+  @media (max-width:760px){ table{font-size:14px} th,td{padding:6px 8px} }
+  @media print{
+    body{background:#fff} .page{padding:0;max-width:none}
+    .bar,.noprint{display:none !important}
+    h2{page-break-after:avoid} figure,table,.panel{page-break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>DFA Input String Acceptance Checker</h1>
+<p class="sub">AL102 — Automata Theory. Deterministic finite automaton accepting exactly the string <code>101</code>.</p>
+<p class="note">Diagrams are inline SVG; draw.io source for each is included and can be exported with the buttons below.</p>
+
+<h2>1. Formal definition</h2>
+<div class="panel">
+<dl class="kv">
+  <dt>States</dt><dd>Q = {q0, q1, q2, q3, qd}</dd>
+  <dt>Alphabet</dt><dd>&#931; = {0, 1}</dd>
+  <dt>Start state</dt><dd>q0</dd>
+  <dt>Accepting state</dt><dd>F = {q3}</dd>
+  <dt>Dead state</dt><dd>qd</dd>
+  <dt>Transition function</dt><dd>&#948; : Q &times; &#931; &rarr; Q</dd>
+  <dt>Language</dt><dd>L(M) = { 101 }</dd>
+</dl>
+<p>The machine reads one symbol at a time from left to right. It accepts only when the <em>entire</em> input equals <code>101</code>. Any deviation sends the machine to <code>qd</code>, from which no symbol can return it.</p>
+<p>Three consequences worth stating explicitly, because each is easy to get wrong:</p>
+<ul>
+  <li><code>1010</code> and <code>1011</code> are <strong>rejected</strong>. <code>q3</code> has no self-loop, so any fourth symbol traps the machine. This is what makes the language the single string <code>101</code> rather than "strings beginning with 101".</li>
+  <li><code>1101</code> is <strong>rejected</strong> even though it ends with the same three characters. The automaton is anchored at the start of the input and falls into <code>qd</code> on the second symbol.</li>
+  <li>The empty string is <strong>rejected</strong>: zero transitions are taken, the machine stays in <code>q0</code>, and <code>q0</code> is not accepting.</li>
+</ul>
+</div>
+
+<h2>2. State diagram</h2>
+
+<figure>
+<svg class="diagram" viewBox="0 0 620 440" role="img" aria-labelledby="sd-t sd-d">
+  <title id="sd-t">State diagram for the DFA accepting exactly 101</title>
+  <desc id="sd-d">Five states, q0, q1, q2, q3 and qd. q0 is the start state, marked by an arrow with no source. q3 is the only accepting state, drawn with a double circle. qd is the dead state below the others. Reading 1 from q0 goes to q1. Reading 0 from q1 goes to q2. Reading 1 from q2 goes to q3. Every other transition, including every transition out of qd, goes to qd. The only accepted string is 101.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#14181f"/>
+    </marker>
+  </defs>
+
+  <g fill="none" stroke="#14181f" stroke-width="2">
+    <path d="M30,110 L116,110" marker-end="url(#a)"/>
+    <path d="M120,76 C92,20 192,20 164,76" marker-end="url(#a)"/>
+    <path d="M154,110 L226,110" marker-end="url(#a)"/>
+    <path d="M260,76 C232,20 332,20 304,76" marker-end="url(#a)"/>
+    <path d="M270,110 L342,110" marker-end="url(#a)"/>
+    <path d="M400,76 C372,20 472,20 444,76" marker-end="url(#a)"/>
+    <path d="M476,110 L548,110" marker-end="url(#a)"/>
+    <path d="M120,144 C120,236 230,304 288,318" marker-end="url(#a)"/>
+    <path d="M260,144 C260,248 310,306 330,318" marker-end="url(#a)"/>
+    <path d="M400,144 C400,244 360,306 346,318" marker-end="url(#a)"/>
+    <path d="M530,144 C530,248 430,310 376,322" marker-end="url(#a)"/>
+    <path d="M568,132 C604,184 604,292 518,342 C460,364 400,348 382,330" marker-end="url(#a)"/>
+    <path d="M282,360 C256,420 356,420 330,360" marker-end="url(#a)"/>
+  </g>
+
+  <g font-family="Iowan Old Style,Palatino,Georgia,serif" font-size="20" fill="#14181f" text-anchor="middle">
+    <text x="78" y="101">1</text>
+    <text x="142" y="26">0</text>
+    <text x="190" y="101">0</text>
+    <text x="282" y="26">1</text>
+    <text x="306" y="101">1</text>
+    <text x="422" y="26">0</text>
+    <text x="512" y="101">0</text>
+    <text x="182" y="262">0</text>
+    <text x="286" y="262">1</text>
+    <text x="414" y="258">0</text>
+    <text x="474" y="272">0</text>
+    <text x="586" y="258">1</text>
+    <text x="306" y="404">0,1</text>
+  </g>
+
+  <g fill="#ffffff" stroke="#14181f" stroke-width="2">
+    <circle cx="120" cy="110" r="34"/>
+    <circle cx="260" cy="110" r="34"/>
+    <circle cx="400" cy="110" r="34"/>
+    <circle cx="530" cy="110" r="34"/>
+    <circle cx="306" cy="326" r="34"/>
+  </g>
+  <circle cx="530" cy="110" r="42" fill="none" stroke="#14181f" stroke-width="2"/>
+  <g font-family="Iowan Old Style,Palatino,Georgia,serif" font-size="23" fill="#14181f" text-anchor="middle">
+    <text x="120" y="118">q0</text>
+    <text x="260" y="118">q1</text>
+    <text x="400" y="118">q2</text>
+    <text x="530" y="118">q3</text>
+    <text x="306" y="334">qd</text>
+  </g>
+</svg>
+<figcaption><strong>Figure 1.</strong> The arrow with no source marks the start state <code>q0</code>. The double circle marks the accepting state <code>q3</code>. The dead state <code>qd</code> sits below the others and loops to itself on both symbols. All ten transitions of the table in section 3 are drawn.</figcaption>
+</figure>
+
+<div class="bar noprint">
+  <button type="button" onclick="copyXml('mx-statediagram','copy-sd')">Copy draw.io XML (state diagram)</button>
+  <button type="button" onclick="dlXml('mx-statediagram','state-diagram.drawio')">Download .drawio</button>
+  <span class="note" id="copy-sd" role="status" aria-live="polite"></span>
+</div>
+
+<h2>3. Transition table</h2>
+
+<table>
+  <caption>Table 1. Transition function. <code>&rarr;</code> marks the start state, <code>*</code> marks the accepting state.</caption>
+  <thead><tr><th scope="col">State</th><th scope="col">Input 0</th><th scope="col">Input 1</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">&rarr; q0</th><td>qd</td><td>q1</td></tr>
+    <tr><th scope="row">q1</th><td>q2</td><td>qd</td></tr>
+    <tr><th scope="row">q2</th><td>qd</td><td>q3</td></tr>
+    <tr><th scope="row">* q3</th><td>qd</td><td>qd</td></tr>
+    <tr><th scope="row">qd</th><td>qd</td><td>qd</td></tr>
+  </tbody>
+</table>
+
+<p class="note">The function is total: every state defines a destination for every input class, so the machine is a complete DFA with no undefined transitions. The <code>qd</code> row is constant — once entered, the machine cannot leave. Every cell is filled, so the machine is a complete DFA with no undefined transitions.</p>
+
+<h2>4. Flow chart</h2>
+
+<figure>
+<svg class="diagram" viewBox="0 0 660 800" role="img" aria-labelledby="fc-t fc-d">
+  <title id="fc-t">Flow chart for the acceptance checker</title>
+  <desc id="fc-d">Start. Read the input string. Is every character 0 or 1? If no, show an error and stop. If yes, set the current state to q0. For each symbol from left to right, apply the transition function. Is the final state q3? If yes, report ACCEPTED, otherwise report REJECTED. Stop.</desc>
+  <defs>
+    <marker id="b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#14181f"/>
+    </marker>
+  </defs>
+
+  <g fill="none" stroke="#14181f" stroke-width="1.8">
+    <path d="M250,48 L250,74" marker-end="url(#b)"/>
+    <path d="M250,120 L250,136" marker-end="url(#b)"/>
+    <path d="M386,188 L430,188" marker-end="url(#b)"/>
+    <path d="M580,188 L600,188 L600,736 L320,736 L320,718" marker-end="url(#b)"/>
+    <path d="M250,240 L250,268" marker-end="url(#b)"/>
+    <path d="M250,314 L250,342" marker-end="url(#b)"/>
+    <path d="M250,400 L250,418" marker-end="url(#b)"/>
+    <path d="M180,532 L180,578 L135,578 L135,600" marker-end="url(#b)"/>
+    <path d="M320,532 L320,578 L360,578 L360,600" marker-end="url(#b)"/>
+    <path d="M135,656 L135,676 L250,676" marker-end="url(#b)"/>
+    <path d="M360,656 L360,676 L250,676" marker-end="url(#b)"/>
+    <path d="M250,676 L250,700" marker-end="url(#b)"/>
+  </g>
+
+  <g fill="#ffffff" stroke="#14181f" stroke-width="1.8">
+    <rect x="180" y="12" width="140" height="36" rx="18"/>
+    <rect x="130" y="74" width="240" height="46" rx="4"/>
+    <polygon points="250,136 386,188 250,240 114,188"/>
+    <rect x="430" y="163" width="150" height="50" rx="4"/>
+    <rect x="130" y="268" width="240" height="46" rx="4"/>
+    <rect x="110" y="342" width="280" height="58" rx="4"/>
+    <polygon points="250,418 390,494 250,570 110,494"/>
+    <rect x="40" y="600" width="190" height="56" rx="4"/>
+    <rect x="265" y="600" width="190" height="56" rx="4"/>
+    <rect x="180" y="700" width="140" height="36" rx="18"/>
+  </g>
+
+  <g font-family="system-ui,-apple-system,Segoe UI,Arial,sans-serif" font-size="14" fill="#14181f" text-anchor="middle">
+    <text x="250" y="35" font-weight="600">Start</text>
+    <text x="250" y="102">Read the input string</text>
+    <text x="250" y="183">Every character</text>
+    <text x="250" y="201">is 0 or 1?</text>
+    <text x="505" y="184">Show error:</text>
+    <text x="505" y="202">invalid input</text>
+    <text x="250" y="296">Set state = q0</text>
+    <text x="250" y="368">For each symbol, left to right:</text>
+    <text x="250" y="388">state = &delta;(state, symbol)</text>
+    <text x="250" y="499">state = q3?</text>
+    <text x="135" y="624" font-weight="600">ACCEPTED</text>
+    <text x="135" y="643">final state q3</text>
+    <text x="360" y="624" font-weight="600">REJECTED</text>
+    <text x="360" y="643">report final state</text>
+    <text x="250" y="723" font-weight="600">Stop</text>
+  </g>
+
+  <g font-family="system-ui,-apple-system,Segoe UI,Arial,sans-serif" font-size="13" font-weight="600" fill="#14181f">
+    <text x="396" y="180">No</text>
+    <text x="260" y="258">Yes</text>
+    <text x="188" y="548">Yes</text>
+    <text x="330" y="548">No</text>
+  </g>
+</svg>
+<figcaption><strong>Figure 2.</strong> Validation runs before simulation, so an invalid string never produces an acceptance result. Acceptance is decided by comparing the computed final state against the accepting state <code>q1</code>, never by inspecting the last character in the interface.</figcaption>
+</figure>
+
+<div class="bar noprint">
+  <button type="button" onclick="copyXml('mx-flowchart','copy-fc')">Copy draw.io XML (flow chart)</button>
+  <button type="button" onclick="dlXml('mx-flowchart','flowchart.drawio')">Download .drawio</button>
+  <span class="note" id="copy-fc" role="status" aria-live="polite"></span>
+</div>
+
+<h2>5. Worked example</h2>
+
+<p>The string <code>101</code> is checked below. Each row is one application of the transition function.</p>
+
+<table>
+  <caption>Table 2. Trace for the input <code>101</code>.</caption>
+  <thead><tr><th scope="col">Step</th><th scope="col">Symbol</th><th scope="col">From</th><th scope="col">To</th></tr></thead>
+  <tbody>
+    <tr><td>Start</td><td>&mdash;</td><td>&mdash;</td><td>q0</td></tr>
+    <tr><td>1</td><td>1</td><td>q0</td><td>q1</td></tr>
+    <tr><td>2</td><td>0</td><td>q1</td><td>q2</td></tr>
+    <tr><td>3</td><td>1</td><td>q2</td><td>q3</td></tr>
+  </tbody>
+</table>
+
+<dl class="kv">
+  <dt>Input</dt><dd>101</dd>
+  <dt>Start state</dt><dd>q0</dd>
+  <dt>Final state</dt><dd>q3</dd>
+  <dt>Result</dt><dd>ACCEPTED</dd>
+</dl>
+
+<p>For contrast, <code>1010</code> runs the first three steps identically, then the fourth symbol takes <code>q3</code> to <code>qd</code>, so the result is REJECTED. And <code>1101</code> takes the second <code>1</code> straight into <code>qd</code>, even though it ends with the same three characters.</p>
+
+<h2>6. Source code</h2>
+
+<div class="todo">
+  <strong>To be added.</strong>
+  <p class="note" style="margin:0">This section is a placeholder. The final source listing will be added once the remaining changes are settled.</p>
+</div>
+
+<p class="note">Planned contents: <code>dfa.py</code> (automaton, validation, simulation, test oracle), <code>app.py</code> (PyWebView window and bridge), <code>index.html</code>, <code>styles.css</code>, <code>script.js</code>.</p>
+
+<h2>7. draw.io source</h2>
+
+<p>Both diagrams are stored below as native draw.io (mxGraph) XML. Open <strong>app.diagrams.net</strong>, choose <em>Extras &rarr; Edit Diagram</em>, paste the XML, and the diagram becomes editable with the standard shape palette.</p>
+
+<h3>State diagram</h3>
+<button class="noprint" type="button" onclick="togglePre('pre-statediagram')">Show XML</button>
+<pre class="xml" id="pre-statediagram" hidden></pre>
+
+<h3>Flow chart</h3>
+<button class="noprint" type="button" onclick="togglePre('pre-flowchart')">Show XML</button>
+<pre class="xml" id="pre-flowchart" hidden></pre>
+
+</div>
+
+<script type="text/plain" id="mx-statediagram"><mxfile host="app.diagrams.net" agent="AL102-DFA" version="24.0.0">
+  <diagram id="dfa-state-diagram" name="State Diagram">
+    <mxGraphModel dx="1422" dy="798" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="826" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="DFA accepting exactly 101" style="text;html=1;align=left;verticalAlign=middle;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="320" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="q0" value="q0" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontFamily=Georgia;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="80" y="110" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="q1" value="q1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontFamily=Georgia;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="250" y="110" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="q2" value="q2" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontFamily=Georgia;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="420" y="110" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="q3" value="q3" style="ellipse;shape=doubleEllipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontFamily=Georgia;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="590" y="110" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="qd" value="qd" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontFamily=Georgia;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="320" y="300" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e-start" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#14181f;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="30" y="145" as="sourcePoint" />
+            <mxPoint x="80" y="145" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e0-1" value="1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontFamily=Georgia;fontSize=13;" edge="1" parent="1" source="q0" target="q1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1-2" value="0" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontFamily=Georgia;fontSize=13;" edge="1" parent="1" source="q1" target="q2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2-3" value="1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontFamily=Georgia;fontSize=13;" edge="1" parent="1" source="q2" target="q3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e0-d" value="0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontFamily=Georgia;fontSize=13;" edge="1" parent="1" source="q0" target="qd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1-d" value="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontFamily=Georgia;fontSize=13;" edge="1" parent="1" source="q1" target="qd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2-d" value="0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontFamily=Georgia;fontSize=13;" edge="1" parent="1" source="q2" target="qd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3-d0" value="0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontFamily=Georgia;fontSize=13;" edge="1" parent="1" source="q3" target="qd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3-d1" value="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontFamily=Georgia;fontSize=13;" edge="1" parent="1" source="q3" target="qd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed-d" value="0,1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontFamily=Georgia;fontSize=13;" edge="1" parent="1" source="qd" target="qd">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="300" y="410" /></Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile></script>
+
+<script type="text/plain" id="mx-flowchart"><mxfile host="app.diagrams.net" agent="AL102-DFA" version="24.0.0">
+  <diagram id="dfa-flowchart" name="Flow Chart">
+    <mxGraphModel dx="1422" dy="798" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="826" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="f-title" value="Acceptance checker algorithm" style="text;html=1;align=left;verticalAlign=middle;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="320" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="f-start" value="Start" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="215" y="70" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="f-read" value="Read the input string" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="185" y="150" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="f-valid" value="Every character is 0 or 1?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="175" y="240" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="f-error" value="Show error:&#10;invalid input" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#B3261E;fontColor=#B3261E;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="420" y="258" width="150" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="f-init" value="Set state = q0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="185" y="370" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="f-loop" value="For each symbol, left to right:&#10;state = delta(state, symbol)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="160" y="460" width="210" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="f-final" value="state = q1?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="175" y="560" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="f-acc" value="ACCEPTED&#10;final state q1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F3EE;strokeColor=#0B6B45;fontColor=#0B6B45;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="60" y="690" width="160" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="f-rej" value="REJECTED&#10;report final state" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FBEDEC;strokeColor=#B3261E;fontColor=#B3261E;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="330" y="690" width="160" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="f-stop" value="Stop" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#14181f;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="215" y="790" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fe1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;" edge="1" parent="1" source="f-start" target="f-read">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe2" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;" edge="1" parent="1" source="f-read" target="f-valid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe3" value="No" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontSize=12;fontStyle=1;" edge="1" parent="1" source="f-valid" target="f-error">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe4" value="Yes" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontSize=12;fontStyle=1;" edge="1" parent="1" source="f-valid" target="f-init">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe5" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;fontSize=12;fontStyle=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="f-error" target="f-stop">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="600" y="810" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fe6" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;" edge="1" parent="1" source="f-init" target="f-loop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe7" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;" edge="1" parent="1" source="f-loop" target="f-final">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe8" value="Yes" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#0B6B45;fontSize=12;fontStyle=1;" edge="1" parent="1" source="f-final" target="f-acc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe9" value="No" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#B3261E;fontSize=12;fontStyle=1;" edge="1" parent="1" source="f-final" target="f-rej">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe10" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;" edge="1" parent="1" source="f-acc" target="f-stop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe11" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=2;strokeColor=#14181f;" edge="1" parent="1" source="f-rej" target="f-stop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile></script>
+
+<script>
+function getXml(id){
+  var el = document.getElementById(id);
+  return el ? el.textContent.trim() : '';
+}
+function copyXml(id, statusId){
+  var xml = getXml(id);
+  var out = document.getElementById(statusId);
+  if (!xml) { out.textContent = 'Nothing to copy.'; return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(xml).then(function(){
+      out.textContent = 'Copied ' + xml.length + ' characters. Paste into draw.io with Extras -> Edit Diagram.';
+    }, function(){ fallbackCopy(xml, out); });
+  } else { fallbackCopy(xml, out); }
+}
+function fallbackCopy(xml, out){
+  var ta = document.createElement('textarea');
+  ta.value = xml;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); out.textContent = 'Copied. Paste into draw.io with Extras -> Edit Diagram.'; }
+  catch (e) { out.textContent = 'Copy failed. Use the Show XML button and copy manually.'; }
+  document.body.removeChild(ta);
+}
+function dlXml(id, filename){
+  var xml = getXml(id);
+  if (!xml) return;
+  var blob = new Blob([xml], { type: 'application/xml' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+function togglePre(id){
+  var pre = document.getElementById(id);
+  var src = id === 'pre-statediagram' ? 'mx-statediagram' : 'mx-flowchart';
+  if (pre.hidden) { pre.textContent = getXml(src); pre.hidden = false; }
+  else { pre.hidden = true; }
+}
+</script>
+</body>
+</html>

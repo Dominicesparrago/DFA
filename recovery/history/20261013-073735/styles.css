@@ -1,0 +1,529 @@
+﻿/* AL102 DFA Input String Acceptance Checker, visual revision 27.
+
+   The tape, state flow and trace are the original panels. The figure is the one
+   panel with a redesign: fewer labels, and step labels that the walk fills in.
+   Colour and type live in token blocks (:root and the three theme blocks).
+   Component rules use tokens only: no hex value appears outside a token block.
+
+   Themes (set on <html data-theme>):
+     no attribute   follow the operating system (Textbook light, or Night dark)
+     "light"        Textbook
+     "dark"         Night
+     "contrast"     High contrast
+
+   Motion: transform and opacity only, all inside prefers-reduced-motion:
+   no-preference. Nothing loops. Reduced motion gets a static state, not
+   shorter durations. */
+
+:root {
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Shape, layout and motion tokens. Not colours, so they sit outside the theme blocks. */
+  --radius: 2px;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 150ms;
+  --dur-base: 240ms;
+
+  /* Textbook (light) */
+  --paper: #F2F1EC;
+  --surface: #FFFFFF;
+  --line: #DEDBD0;            /* graph paper. Decorative only. */
+  --ink: #14181F;
+  --graphite: #4B5563;
+  --highlight: #F2B705;       /* the reading cell and the active row */
+  --on-highlight: var(--ink);
+  --accept: #0B6B45;
+  --reject: #B3261E;
+  --focus: #1D4ED8;
+  --rule: #C9C5B8;            /* dots on the figure plate. Decorative only. */
+  --shadow: rgba(20, 24, 31, 0.18);
+  color-scheme: light;
+}
+
+/* Night, following the operating system when no theme is chosen */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --paper: #0E1116;
+    --surface: #151A21;
+    --line: #1B222B;
+    --ink: #E6EAF0;
+    --graphite: #9AA5B4;
+    --highlight: #F5B82E;
+    --on-highlight: #0E1116;
+    --accept: #5CC79F;
+    --reject: #F28E87;
+    --focus: #8AB4FF;
+    --rule: #2A323D;
+    --shadow: rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+
+/* Night, chosen explicitly */
+:root[data-theme="dark"] {
+  --paper: #0E1116;
+  --surface: #151A21;
+  --line: #1B222B;
+  --ink: #E6EAF0;
+  --graphite: #9AA5B4;
+  --highlight: #F5B82E;
+  --on-highlight: #0E1116;
+  --accept: #5CC79F;
+  --reject: #F28E87;
+  --focus: #8AB4FF;
+  --rule: #2A323D;
+  --shadow: rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+/* High contrast: black and white. The graph paper disappears, because it carries no information. */
+:root[data-theme="contrast"] {
+  --paper: #FFFFFF;
+  --surface: #FFFFFF;
+  --line: #FFFFFF;
+  --ink: #000000;
+  --graphite: #333333;
+  --highlight: #FFD500;
+  --on-highlight: #000000;
+  --accept: #00502F;
+  --reject: #9E0000;
+  --focus: #0037B0;
+  --rule: #6B6B6B;
+  --shadow: rgba(0, 0, 0, 0);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; color: var(--ink); background-color: var(--paper);
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  font: 400 16px/1.55 var(--sans);
+}
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Page and title */
+.page { max-width: 1280px; margin: 0 auto; padding: 24px 16px 128px; }
+@media (min-width: 640px) { .page { padding: 32px 24px 136px; } }
+
+.page-head { margin-bottom: 28px; padding-bottom: 18px; border-bottom: 3px solid var(--ink); }
+.page-head h1 {
+  font: 800 clamp(2rem, 4.6vw, 3.2rem)/1.04 var(--sans);
+  letter-spacing: -0.03em; margin: 0 0 10px; max-width: 18ch;
+}
+.page-head p { margin: 0; font-size: 17px; color: var(--graphite); max-width: 60ch; }
+/* "101" sits on a full highlight block, so its text is on-highlight in every theme. */
+.accent {
+  position: relative; isolation: isolate; color: var(--on-highlight); padding: 0 0.12em; font-weight: 600;
+}
+.accent::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; background: var(--highlight);
+  transform-origin: left center;
+}
+
+/* Workspace: rail and stage. One column below 1120px, rail first. */
+.workspace { display: block; }
+.rail, .stage { display: grid; gap: 24px; min-width: 0; }
+.stage { margin-top: 24px; }
+@media (min-width: 1120px) {
+  .workspace { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 36px; align-items: start; }
+  .rail { position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; padding: 4px 6px 6px 4px; }
+  .stage { margin-top: 0; }
+}
+/* Two columns from 1200px: the figure, the tape, the state flow and the tests
+   span the stage. The trace and the transition table share a row. Reading order is the tab order. */
+@media (min-width: 1200px) {
+  .stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; align-items: start; }
+  .stage > .panel--figure,
+  .stage > .panel--tape,
+  .stage > .panel--flow,
+  .stage > .panel--tests { grid-column: 1 / -1; }
+}
+
+/* Panels are boards with a channel tag. The tag is the heading. */
+.panel {
+  position: relative; min-width: 0;
+  background: var(--surface); border: 1px solid var(--graphite); border-radius: var(--radius);
+  padding: 34px 18px 18px;
+}
+@media (max-width: 639px) { .panel { padding: 32px 14px 14px; } }
+.panel > h2 {
+  position: absolute; left: -1px; top: -1px; margin: 0;
+  background: var(--ink); color: var(--paper);
+  font: 600 12px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 7px 10px 6px;
+}
+
+/* Input */
+.input-row { display: flex; flex-direction: column; gap: 18px; }
+.field label { display: block; font: 600 14px/1.3 var(--sans); margin-bottom: 6px; }
+.field input {
+  display: block; width: 100%; min-height: 44px; padding: 10px 12px;
+  font: 500 20px/1.2 var(--mono); letter-spacing: 0.12em;
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--graphite); border-radius: var(--radius);
+}
+.field input:focus { border-color: var(--focus); }
+.field input[aria-invalid="true"] { border-color: var(--reject); border-width: 2px; }
+.field input:disabled { opacity: 0.6; }
+.help { margin: 6px 0 0; font-size: 14px; color: var(--graphite); }
+
+.btn-row { display: flex; gap: 10px; }
+.btn-row .btn { flex: 1 1 auto; }
+
+/* Buttons are square and stamped */
+.btn {
+  min-height: 44px; padding: 0 18px; border-radius: var(--radius);
+  font: 600 15px/1 var(--sans); cursor: pointer; white-space: nowrap;
+}
+.btn:disabled { cursor: default; opacity: 0.55; }
+.btn--primary { background: var(--ink); color: var(--surface); border: 1px solid var(--ink); }
+.btn--secondary { background: transparent; color: var(--ink); border: 1px solid var(--graphite); }
+.btn--link {
+  min-height: 44px; padding: 0 14px; background: transparent; color: var(--ink);
+  border: 1px dashed var(--graphite); border-radius: var(--radius); font: 500 15px/1 var(--mono);
+}
+.btn--primary:not(:disabled):hover { background: var(--graphite); border-color: var(--graphite); }
+.btn--secondary:not(:disabled):hover { background: var(--paper); }
+.btn--link:not(:disabled):hover { background: var(--paper); border-style: solid; }
+.examples { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--graphite); font-size: 14px; margin-top: 18px; }
+.examples > span { flex: 0 0 100%; }
+
+/* Validation error */
+.error {
+  border: 2px solid var(--reject); border-radius: var(--radius);
+  padding: 12px 14px; margin-bottom: 14px; background: var(--surface);
+}
+.error[hidden] { display: none; }
+.error p { margin: 0 0 4px; }
+.error .err-head { color: var(--reject); font-weight: 600; }
+.error .icon { font-size: 16px; }
+
+/* Result: the verdict is the readout. Idle and invalid states use the same slot, muted. */
+.result { padding: 0; }
+.verdict {
+  margin: 0; padding-bottom: 10px; border-bottom: 3px solid var(--accept);
+  font: 800 clamp(2.3rem, 4vw, 3.3rem)/0.95 var(--sans); letter-spacing: -0.03em;
+  color: var(--accept);
+}
+.result.is-rejected .verdict { color: var(--reject); border-bottom-color: var(--reject); }
+.result--idle { color: var(--graphite); }
+.result--idle .verdict { color: var(--graphite); border-bottom: 3px solid var(--rule); font-size: clamp(1.6rem, 3vw, 2.2rem); }
+.icon { font-family: var(--sans); font-size: 20px; margin-right: 8px; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 16px 0 0; }
+.facts dt { font: 600 12px/1.8 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--graphite); }
+/* A long input has no spaces; without this it overflows the page at 320px. */
+.facts dd { margin: 0; font: 500 16px/1.8 var(--mono); overflow-wrap: anywhere; }
+.reason { margin: 14px 0 0; }
+
+/* Tape: cells sit on the paper; the reading cell takes the highlight. */
+.tape { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 8px; }
+.cell { display: flex; flex-direction: column; align-items: center; width: 52px; }
+.cell .sym {
+  width: 52px; height: 60px; display: grid; place-items: center;
+  font: 500 28px/1 var(--mono); font-variant-numeric: tabular-nums;
+  background: var(--paper); color: var(--ink);
+  border: 1px solid var(--graphite); border-radius: 4px;
+}
+.cell .idx { height: 16px; margin-top: 6px; font: 500 13px/16px var(--mono); color: var(--graphite); }
+/* The reading cell keeps an ink border, so it stays visible against the highlight. */
+.cell.is-reading .sym { background: var(--highlight); color: var(--on-highlight); border-color: var(--ink); }
+.cell.is-invalid .sym { border: 2px solid var(--reject); }
+.cell.is-invalid .mark { color: var(--reject); font-size: 13px; }
+@media (max-width: 639px) {
+  .cell { width: 40px; }
+  .cell .sym { width: 40px; height: 50px; font-size: 24px; }
+}
+
+/* State flow: states are pills, joined by arrows. The final state is filled. */
+.flow { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 4px; }
+.flow li { display: flex; align-items: center; gap: 4px; }
+.flow li > span:not(.arrow):not(.vh) {
+  font: 500 16px/1 var(--mono); padding: 8px 12px;
+  border: 1px solid var(--graphite); border-radius: 999px;
+}
+.flow li.final > span:not(.vh) { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.flow .arrow { color: var(--graphite); font: 400 16px/1 var(--sans); }
+
+/* Scroll regions and tables. Rows are ruled. The region edge is graphite, so it is a visible boundary. */
+.scroll { max-height: 340px; overflow: auto; border: 1px solid var(--graphite); border-radius: var(--radius); background: var(--surface); }
+@media (max-width: 639px) { .scroll { max-height: 50vh; } }
+table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; background: var(--surface); }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+thead th { position: sticky; top: 0; background: var(--surface); font: 600 12px/1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--graphite); border-bottom: 2px solid var(--ink); }
+tbody tr:hover > td { background: var(--paper); }
+caption { text-align: left; font: 400 14px/1.4 var(--sans); color: var(--graphite); padding-bottom: 8px; }
+#trace-body td,
+#transition-table td,
+#transition-table th[scope="row"],
+#tests-body td { font-family: var(--mono); font-size: 14px; }
+.tag {
+  display: inline-block; margin-left: 8px; padding: 1px 8px;
+  font: 600 13px/1.5 var(--sans); border: 1px solid var(--ink); border-radius: var(--radius);
+}
+.pass { color: var(--accept); font-weight: 600; }
+.fail { color: var(--reject); font-weight: 600; }
+.tests-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 0 0 14px; }
+.tests-summary { margin: 0; }
+
+/* Figure: the machine on a dot plate. The plate has a floor of 430px, so the
+   smallest label (20 units in the viewBox) renders at 14.3px. Narrow screens
+   scroll the plate, and the plate can be focused and panned from the keyboard. */
+.figure { margin: 0; }
+.figure .svg-box {
+  background-color: var(--paper);
+  background-image: radial-gradient(circle, var(--rule) 1.1px, transparent 1.6px);
+  background-size: 22px 22px; border: 1px solid var(--graphite); border-radius: var(--radius);
+  overflow-x: auto; max-width: 100%;
+}
+.figure svg { display: block; width: 100%; min-width: 430px; max-width: 640px; height: auto; margin: 0 auto; }
+.figure svg text { font-family: var(--mono); fill: var(--ink); }
+.figure .node-label { font-size: 24px; }
+.figure .edge-label { font-size: 20px; }
+.figure .core { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+/* The accepting state is drawn with a double ring. That ring is part of the
+   machine's definition, so it is a static property of the figure and never an
+   effect of a check. */
+.figure .ring { fill: none; stroke: var(--ink); stroke-width: 2; }
+.figure .edge { fill: none; stroke: var(--ink); stroke-width: 2; }
+.figure marker path { fill: var(--ink); }
+.figure .edge--taken { stroke: var(--focus); stroke-width: 4; }
+
+/* Walk row: one circle for each symbol read after the third, on the top row after q3.
+   Each circle is joined to the one before, and to qd. The newest circle takes the highlight. */
+.figure .walk-link { fill: none; stroke: var(--ink); stroke-width: 2; }
+/* At rest (and after an invalid string) only q0, q1 and qd show; a valid check shows the rest. */
+/* The accepted mark: a double ring on q3, only for an accepted input. */
+/* Idle figure: the shapes recede to graphite. The text is never dimmed. */
+.figure svg.is-dim .core,
+.figure svg.is-dim .ring,
+.figure svg.is-dim .edge,
+.figure svg.is-dim .walk-link { stroke: var(--graphite); }
+.figure svg.is-dim marker path { fill: var(--graphite); }
+/* Walk token: moved by transform along the taken edge. Hidden at rest. */
+.figure .walk-token { fill: var(--focus); stroke: var(--surface); stroke-width: 2; opacity: 0; }
+.figure .walk-token.is-moving { opacity: 1; }
+/* a hop across a gap in the path: fade out, set down, fade in */
+.figure .walk-token.is-hop { opacity: 0; }
+/* Pulse ring: silent at rest; the motion block runs it once per arrival */
+.figure .pulse { fill: none; stroke: var(--focus); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+/* Arrow labels: the step each arrow took. Hidden until the walk takes that arrow. */
+.figure .edge-step { opacity: 0; }
+.figure .edge-step.is-shown { opacity: 1; }
+.figure figcaption { font: 400 14px/1.5 var(--sans); color: var(--graphite); margin-top: 14px; max-width: 64ch; }
+
+/* Active row in the transition table: highlight fill, ink text, ink inset edge */
+#transition-table tr.is-active > th,
+#transition-table tr.is-active > td {
+  background: var(--highlight); color: var(--on-highlight);
+  font-weight: 600; box-shadow: inset 0 0 0 2px var(--on-highlight);
+}
+#transition-table th[scope="row"] { font-weight: 400; }
+#dfa-reference .defn-block h2 {
+  font: 600 12px/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--graphite); margin: 24px 0 10px;
+}
+
+/* Definition list */
+.defn { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 18px; margin: 0; }
+.defn dt { font: 600 12px/1.8 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--graphite); }
+.defn dd { margin: 0; font: 400 15px/1.8 var(--mono); }
+
+/* Display: one floating button at the end of the reading order. Its menu opens
+   above it and holds the appearance and the flow timing. The focus ring sits
+   outside the pill, on the page, so it meets 3:1 in every theme. */
+.fab { position: fixed; right: 16px; bottom: 16px; z-index: 10; }
+@media (min-width: 640px) { .fab { right: 24px; bottom: 24px; } }
+.fab-btn {
+  min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--ink); color: var(--surface); box-shadow: 0 8px 24px var(--shadow);
+  font: 600 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.fab-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.fab-menu {
+  position: absolute; right: 0; bottom: calc(100% + 10px);
+  width: min(264px, calc(100vw - 32px));
+  display: grid; gap: 16px; padding: 16px;
+  background: var(--surface); border: 1px solid var(--graphite); border-radius: var(--radius);
+  box-shadow: 0 8px 24px var(--shadow);
+}
+.fab-menu[hidden] { display: none; }
+.menu-item { display: grid; gap: 6px; }
+.menu-item label {
+  font: 600 12px/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--graphite);
+}
+.menu-item select {
+  width: 100%; min-height: 44px; padding: 0 34px 0 12px;
+  font: 500 15px/1 var(--sans); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--graphite); border-radius: var(--radius);
+}
+/* The timing has no effect without a walk, so under reduced motion the menu says so. */
+.menu-note { margin: 0; font-size: 13px; color: var(--graphite); display: none; }
+@media (prefers-reduced-motion: reduce) { .menu-note { display: block; } }
+
+/* Safety net: when reduced motion is requested, every transition and animation
+   duration is zero. The motion block below is the main control. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   Motion. Transform and opacity only, and only when the user has not asked for
+   reduced motion. Order: the title, the rail, the stage top to bottom, then the
+   machine (nodes, then edges, then labels). The walk runs after the entrance.
+   The walk token is the only thing that moves during a check.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes tag-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes swipe-x {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+  @keyframes node-in {
+    from { opacity: 0; transform: scale(0.85); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes stamp {
+    from { opacity: 0; transform: scale(1.12) rotate(-3deg); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes slide {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes type-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* Title */
+  .page-head h1 { animation: rise 600ms var(--ease-out) 60ms backwards; }
+  .page-head p { animation: rise 500ms var(--ease-out) 140ms backwards; }
+  .accent::before { animation: swipe-x 600ms var(--ease-inout) 420ms backwards; }
+
+  /* Panels rise in reading order, and each channel tag slides in after its board */
+  .rail > .panel { animation: rise 240ms var(--ease-out) 80ms backwards; }
+  .rail > .panel:nth-child(2) { animation-delay: 160ms; }
+  .stage > .panel { animation: rise 240ms var(--ease-out) 200ms backwards; }
+  .stage > .panel:nth-child(2) { animation-delay: 240ms; }
+  .stage > .panel:nth-child(3) { animation-delay: 280ms; }
+  .stage > .panel:nth-child(4) { animation-delay: 320ms; }
+  .stage > .panel:nth-child(5) { animation-delay: 360ms; }
+  .stage > .panel:nth-child(6) { animation-delay: 400ms; }
+  .panel > h2 { animation: tag-in 260ms var(--ease-out) backwards; }
+
+  /* Controls */
+  .field label { animation: fade 240ms ease-out 220ms backwards; }
+  .field input { animation: fade 240ms ease-out 240ms backwards; }
+  .help { animation: fade 240ms ease-out 280ms backwards; }
+  .btn { animation: fade 240ms ease-out 260ms backwards; transition: opacity var(--dur-fast) var(--ease-out), transform 120ms var(--ease-out); }
+  .btn:not(:disabled):active { transform: translateY(1px); }
+  .examples { animation: fade 240ms ease-out 320ms backwards; }
+
+  /* Result and error */
+  .verdict { animation: stamp 360ms var(--ease-overshoot) backwards; transform-origin: left center; }
+  .result:not(.result--idle) .reason,
+  .facts dt,
+  .facts dd { animation: fade 240ms ease-out 200ms backwards; }
+  .error { animation: slide 220ms var(--ease-out) backwards; }
+  .error p { animation: fade 240ms ease-out 80ms backwards; }
+  .error .icon { animation: stamp 320ms var(--ease-overshoot) backwards; }
+
+  /* Tape: cells type in left to right */
+  .cell { animation: type-in 240ms var(--ease-out) backwards; }
+  .cell:nth-child(2) { animation-delay: 24ms; }
+  .cell:nth-child(3) { animation-delay: 48ms; }
+  .cell:nth-child(4) { animation-delay: 72ms; }
+  .cell:nth-child(5) { animation-delay: 96ms; }
+  .cell:nth-child(6) { animation-delay: 120ms; }
+  .cell:nth-child(7) { animation-delay: 144ms; }
+  .cell:nth-child(8) { animation-delay: 168ms; }
+  .cell:nth-child(9) { animation-delay: 192ms; }
+
+
+  /* The reading cell lifts as the walk reaches it. Arrow labels fade in. */
+  .cell .sym { transition: transform var(--dur-fast) var(--ease-out); }
+  .cell.is-reading .sym { transform: translateY(-4px); }
+  .figure .edge-step { transition: opacity 160ms var(--ease-out); }
+
+  /* State flow: each state rises in turn */
+  .flow li { animation: rise 240ms var(--ease-out) backwards; }
+  .flow li:nth-child(2) { animation-delay: 40ms; }
+  .flow li:nth-child(3) { animation-delay: 80ms; }
+  .flow li:nth-child(4) { animation-delay: 120ms; }
+  .flow li:nth-child(5) { animation-delay: 160ms; }
+  .flow li:nth-child(6) { animation-delay: 200ms; }
+  .flow li:nth-child(7) { animation-delay: 240ms; }
+  .flow li:nth-child(8) { animation-delay: 280ms; }
+
+  /* Trace and test rows fade in as they arrive */
+  .scroll { animation: fade 240ms ease-out 280ms backwards; }
+  #trace-body tr,
+  #tests-body tr { animation: fade 240ms ease-out backwards; }
+  .tag { animation: fade 240ms ease-out 300ms backwards; }
+  .tests-row { animation: fade 240ms ease-out 360ms backwards; }
+
+  /* Figure: the plate fades in. Everything on it arrives under script.js, which
+     drives visibility from the input and from the check, so no entrance rule is
+     declared here: popIn() and drawIn() own those. */
+  .figure .svg-box { animation: fade 240ms ease-out 260ms backwards; }
+  .figure figcaption { animation: fade 240ms ease-out 1500ms backwards; }
+
+  /* Each arrival: the state swells a little and its pulse ring runs once */
+  .figure .core { transform-box: fill-box; transform-origin: center; transition: transform var(--dur-fast) var(--ease-out); }
+  .figure .walk-token { transition: opacity 160ms var(--ease-out); }
+  /* popIn() scales this group, so it needs a box and an origin to scale about */
+  .figure .walk-pop { transform-box: fill-box; transform-origin: center; }
+
+  /* Transition table and definitions */
+  #transition-table tbody tr { animation: fade 240ms ease-out 360ms backwards; }
+  caption { animation: fade 240ms ease-out 320ms backwards; }
+  .defn dt,
+  .defn dd { animation: fade 240ms ease-out 400ms backwards; }
+
+  /* Display button arrives last; its menu slides down into place when opened */
+  .fab { animation: rise 240ms var(--ease-out) 560ms backwards; }
+  .fab-menu:not([hidden]) { animation: slide 160ms var(--ease-out) backwards; }
+}
+
+/* Execution Steps: Container B. Its rows are generated from Python's steps and
+   are never confused with the machine's states. A row is hidden until the walk
+   reaches it, marked while it is the step being processed, and left readable
+   afterwards. */
+.step--pending { opacity: 0; }
+.step--current { background: color-mix(in srgb, var(--highlight) 18%, transparent); }
+.step--current .step-symbol,
+.step--current .step-state { font-weight: 600; color: var(--ink); }
+.step--done .step-state { color: var(--graphite); }
+.step-symbol { font-family: var(--mono); font-weight: 600; }
+#steps-body tr { transform-box: border-box; }
+
+/* Execution Steps (Container B). Rows are generated from Python's steps and are
+   never confused with the machine's states: a row is hidden until the walk
+   reaches it, marked while it is the step being processed, and left readable
+   afterwards. */
+.step--pending { opacity: 0; }
+.step--current { background: var(--rule); }
+.step--current .step-symbol,
+.step--current .step-state { font-weight: 600; color: var(--ink); }
+.step--done .step-state { color: var(--graphite); }
+.step-symbol { font-family: var(--mono); font-weight: 600; }
+#steps-body tr { transform-box: border-box; }

@@ -1,0 +1,399 @@
+<!doctype html>
+<!-- AL102 Part B design reference. Static markup and CSS only. This is NOT the application.
+     Copy the markup and CSS into index.html and styles.css. Remove the "Design states" section. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DFA Input String Acceptance Checker</title>
+<style>
+:root {
+  --paper: #F4F6F7;
+  --surface: #FFFFFF;
+  --ink: #1B2430;
+  --graphite: #5C6673;
+  --highlight: #FFD84D;
+  --accept: #13684F;
+  --reject: #A3262B;
+  --focus: #1F5FBF;
+  --rule: #C9D0D6;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #151B22;
+    --surface: #1C232C;
+    --ink: #E6EAEE;
+    --graphite: #9AA5B1;
+    --highlight: #E8C23A;
+    --accept: #5FC9A3;
+    --reject: #F08A84;
+    --focus: #7FB2FF;
+    --rule: #2C3742;
+  }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--sans); }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.page { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+@media (min-width: 640px) { .page { padding: 24px; } }
+
+.page-head h1 { font: 600 30px/1.2 var(--serif); margin: 0 0 8px; }
+.page-head p { margin: 0; color: var(--graphite); max-width: 64ch; }
+
+.layout { display: grid; gap: 0 48px; grid-template-columns: 1fr; }
+@media (min-width: 1024px) { .layout { grid-template-columns: 7fr 5fr; align-items: start; } }
+
+.block { border-top: 1px solid var(--rule); padding-top: 24px; margin-top: 24px; }
+.block.block--first { border-top: 0; margin-top: 0; padding-top: 0; }
+.block h2 { font: 600 16px/1.3 var(--sans); margin: 0 0 12px; }
+
+.field label { display: block; font: 600 14px/1.3 var(--sans); margin-bottom: 6px; }
+.field input {
+  display: block; width: 100%; min-height: 44px; padding: 10px 12px;
+  font: 400 20px/1.2 var(--serif); letter-spacing: 0.08em;
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--graphite); border-radius: 4px;
+}
+.help { margin: 6px 0 0; font-size: 14px; color: var(--graphite); }
+
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
+.btn {
+  min-height: 44px; padding: 0 18px; border-radius: 4px;
+  font: 600 16px/1 var(--sans); cursor: pointer;
+}
+.btn--primary { background: var(--ink); color: var(--surface); border: 1px solid var(--ink); }
+.btn--secondary { background: transparent; color: var(--ink); border: 1px solid var(--graphite); }
+.btn--link { min-height: 44px; padding: 0 8px; background: none; border: 0; color: var(--ink); text-decoration: underline; font: 400 16px var(--serif); }
+.examples { color: var(--graphite); font-size: 14px; }
+
+.error { background: var(--surface); border-left: 4px solid var(--reject); padding: 12px 16px; border-radius: 2px; }
+.error p { margin: 0 0 4px; }
+.error .err-head { color: var(--reject); font-weight: 600; }
+
+.result { background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--accept); border-radius: 2px; padding: 16px 20px; }
+.result.is-rejected { border-left-color: var(--reject); }
+.verdict { margin: 0; font: 600 30px/1.1 var(--serif); color: var(--accept); }
+.result.is-rejected .verdict { color: var(--reject); }
+.verdict .icon { font-family: var(--sans); font-size: 22px; margin-right: 6px; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 12px 0 0; }
+.facts dt { font: 600 14px/1.6 var(--sans); }
+.facts dd { margin: 0; font: 400 18px/1.6 var(--serif); }
+.reason { margin: 12px 0 0; }
+.result--idle { border-left-color: var(--rule); color: var(--graphite); }
+
+.tape { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 6px; }
+.cell { display: flex; flex-direction: column; align-items: center; width: 40px; }
+.cell .sym {
+  width: 40px; height: 48px; display: grid; place-items: center;
+  font: 400 28px/1 var(--serif); font-variant-numeric: tabular-nums;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--graphite); border-radius: 2px;
+}
+.cell .idx { font-size: 12px; line-height: 16px; height: 16px; margin-top: 4px; color: var(--graphite); }
+.cell.is-reading .sym { background: var(--highlight); color: var(--paper); border-color: var(--highlight); }
+.cell.is-invalid .sym { border: 2px solid var(--reject); }
+.cell.is-invalid .mark { color: var(--reject); font-size: 12px; }
+@media (max-width: 639px) {
+  .cell { width: 36px; }
+  .cell .sym { width: 36px; height: 44px; }
+}
+
+.flow { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font: 400 18px/1.4 var(--serif); }
+.flow li { padding: 0 2px; }
+.flow li.final { outline: 1px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
+.flow .arrow { color: var(--graphite); font-family: var(--sans); }
+
+.scroll { max-height: 360px; overflow: auto; border: 1px solid var(--rule); border-radius: 2px; background: var(--surface); }
+@media (max-width: 639px) { .scroll { max-height: 50vh; } }
+table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+thead th { position: sticky; top: 0; background: var(--surface); font-weight: 600; }
+caption { text-align: left; font-size: 14px; color: var(--graphite); padding-bottom: 6px; }
+.tag { font-size: 13px; margin-left: 8px; padding: 1px 6px; border: 1px solid var(--ink); border-radius: 2px; }
+.pass { color: var(--accept); font-weight: 600; }
+.fail { color: var(--reject); font-weight: 600; }
+
+.figure { margin: 0; }
+.figure svg { display: block; width: 100%; max-width: 520px; height: auto; }
+.figure svg text { font-family: var(--serif); fill: var(--ink); }
+.figure .node-label { font-size: 22px; }
+.figure .edge-label { font-size: 18px; }
+.figure .core { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.figure .ring { fill: none; stroke: var(--ink); stroke-width: 2; }
+.figure .edge { fill: none; stroke: var(--ink); stroke-width: 2; }
+.figure marker path { fill: var(--ink); }
+.figure .node--active .core { fill: var(--highlight); }
+.figure .node--active text { fill: var(--paper); }
+.figure .edge--taken { stroke: var(--focus); stroke-width: 4; }
+.figure figcaption { font: italic 15px/1.45 var(--serif); color: var(--graphite); margin-top: 8px; max-width: 60ch; }
+@media (max-width: 479px) {
+  .figure .svg-box { overflow-x: auto; }
+  .figure svg { min-width: 460px; }
+}
+
+.defn { margin: 12px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; font-size: 15px; }
+.defn dt { font: 600 14px/1.6 var(--sans); }
+.defn dd { margin: 0; font: 400 17px/1.6 var(--serif); }
+
+.gallery { margin-top: 48px; border-top: 1px solid var(--rule); padding-top: 24px; }
+.gallery h2 { font: 600 16px/1.3 var(--sans); margin: 0 0 4px; }
+.gallery > p { margin: 0 0 16px; color: var(--graphite); font-size: 14px; }
+.gallery-grid { display: grid; gap: 24px; grid-template-columns: 1fr; }
+@media (min-width: 1024px) { .gallery-grid { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-head">
+  <h1>DFA Input String Acceptance Checker</h1>
+  <p>This machine accepts binary strings that end in 1.</p>
+</header>
+
+<main class="layout">
+
+  <div>
+    <section class="block block--first" aria-labelledby="h-input">
+      <h2 id="h-input">Input</h2>
+      <div class="field">
+        <label for="dfa-input">Binary string</label>
+        <input id="dfa-input" type="text" value="10101" autocomplete="off" spellcheck="false" inputmode="text" aria-describedby="dfa-help">
+        <p id="dfa-help" class="help">Only 0 and 1 are allowed.</p>
+      </div>
+      <div class="row">
+        <button id="check-btn" class="btn btn--primary" type="button">Check string</button>
+        <button id="clear-btn" class="btn btn--secondary" type="button">Clear</button>
+      </div>
+      <div class="row examples">
+        <span>Examples:</span>
+        <button id="example-1" class="btn btn--link" type="button">10101</button>
+        <button id="example-2" class="btn btn--link" type="button">10100</button>
+        <button id="example-3" class="btn btn--link" type="button">1021</button>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="h-result">
+      <h2 id="h-result">Result</h2>
+      <div id="result" class="result" role="status">
+        <p class="verdict"><span class="icon" aria-hidden="true">✓</span>ACCEPTED</p>
+        <dl class="facts">
+          <dt>Input</dt><dd>10101</dd>
+          <dt>Start state</dt><dd>q0</dd>
+          <dt>Final state</dt><dd>q1</dd>
+        </dl>
+        <p class="reason">The last symbol read was 1, so the machine ends in q1, which is accepting.</p>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="h-tape">
+      <h2 id="h-tape">Tape</h2>
+      <ol id="tape" class="tape" aria-label="Input tape, 5 symbols">
+        <li class="cell is-reading"><span class="sym" aria-hidden="true">1</span><span class="idx" aria-hidden="true">1</span><span class="vh">symbol 1 of 5: 1</span></li>
+        <li class="cell"><span class="sym" aria-hidden="true">0</span><span class="idx" aria-hidden="true"></span><span class="vh">symbol 2 of 5: 0</span></li>
+        <li class="cell"><span class="sym" aria-hidden="true">1</span><span class="idx" aria-hidden="true"></span><span class="vh">symbol 3 of 5: 1</span></li>
+        <li class="cell"><span class="sym" aria-hidden="true">0</span><span class="idx" aria-hidden="true"></span><span class="vh">symbol 4 of 5: 0</span></li>
+        <li class="cell"><span class="sym" aria-hidden="true">1</span><span class="idx" aria-hidden="true">5</span><span class="vh">symbol 5 of 5: 1</span></li>
+      </ol>
+    </section>
+
+    <section class="block" aria-labelledby="h-flow">
+      <h2 id="h-flow">State flow</h2>
+      <ol id="flow" class="flow" aria-label="State flow">
+        <li>q0<span class="arrow" aria-hidden="true"> → </span></li>
+        <li>q1<span class="arrow" aria-hidden="true"> → </span></li>
+        <li>q0<span class="arrow" aria-hidden="true"> → </span></li>
+        <li>q1<span class="arrow" aria-hidden="true"> → </span></li>
+        <li>q0<span class="arrow" aria-hidden="true"> → </span></li>
+        <li class="final"><span class="vh">final state </span>q1</li>
+      </ol>
+    </section>
+
+    <section class="block" aria-labelledby="h-trace">
+      <h2 id="h-trace">Trace</h2>
+      <div id="trace" class="scroll" tabindex="0" role="region" aria-label="Trace, scrollable">
+        <table>
+          <thead><tr><th scope="col">Step</th><th scope="col">Transition</th></tr></thead>
+          <tbody>
+            <tr><td>Start</td><td>q0</td></tr>
+            <tr><td>1</td><td><span aria-hidden="true">q0 + 1 → q1</span><span class="vh">Step 1: from q0, reading 1, go to q1.</span></td></tr>
+            <tr><td>2</td><td><span aria-hidden="true">q1 + 0 → q0</span><span class="vh">Step 2: from q1, reading 0, go to q0.</span></td></tr>
+            <tr><td>3</td><td><span aria-hidden="true">q0 + 1 → q1</span><span class="vh">Step 3: from q0, reading 1, go to q1.</span></td></tr>
+            <tr><td>4</td><td><span aria-hidden="true">q1 + 0 → q0</span><span class="vh">Step 4: from q1, reading 0, go to q0.</span></td></tr>
+            <tr><td>5</td><td><span aria-hidden="true">q0 + 1 → q1</span><span class="vh">Step 5: from q0, reading 1, go to q1.</span><span class="tag">final</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div>
+    <section class="block block--first" aria-labelledby="h-figure">
+      <h2 id="h-figure">Figure</h2>
+      <figure class="figure" id="dfa-figure">
+        <div class="svg-box">
+        <svg id="dfa-svg" viewBox="0 0 560 260" role="img" aria-labelledby="dfa-title dfa-desc">
+          <title id="dfa-title">Two-state DFA</title>
+          <desc id="dfa-desc">States q0 and q1. q0 is the start state, marked by an arrow with no source. q1 is the accepting state, drawn as a double circle. From q0, input 0 returns to q0 and input 1 goes to q1. From q1, input 0 goes to q0 and input 1 returns to q1.</desc>
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z"/>
+            </marker>
+          </defs>
+
+          <!-- start arrow -->
+          <path id="edge-start" class="edge" d="M40,140 L130,140" marker-end="url(#arrow)"/>
+
+          <!-- q0 -->
+          <g id="node-q0" class="node">
+            <circle class="core" cx="170" cy="140" r="40"/>
+            <text class="node-label" x="170" y="147" text-anchor="middle">q0</text>
+          </g>
+
+          <!-- q1 (accepting: double circle) -->
+          <g id="node-q1" class="node node--active">
+            <circle class="ring" cx="390" cy="140" r="48"/>
+            <circle class="core" cx="390" cy="140" r="40"/>
+            <text class="node-label" x="390" y="147" text-anchor="middle">q1</text>
+          </g>
+
+          <!-- q0 --1--> q1 -->
+          <path id="edge-q0-q1-1" class="edge edge--taken" d="M210,140 L340,140" marker-end="url(#arrow)"/>
+          <text class="edge-label" x="275" y="130" text-anchor="middle">1</text>
+
+          <!-- q1 --0--> q0 -->
+          <path id="edge-q1-q0-0" class="edge" d="M356.1,173.9 Q277,225 198.3,168.3" marker-end="url(#arrow)"/>
+          <text class="edge-label" x="277" y="222" text-anchor="middle">0</text>
+
+          <!-- q0 --0--> q0 (self-loop) -->
+          <path id="edge-q0-q0-0" class="edge" d="M150,105.4 C120,30 220,30 190,105.4" marker-end="url(#arrow)"/>
+          <text class="edge-label" x="170" y="36" text-anchor="middle">0</text>
+
+          <!-- q1 --1--> q1 (self-loop) -->
+          <path id="edge-q1-q1-1" class="edge" d="M366,98.4 C336,22 444,22 414,98.4" marker-end="url(#arrow)"/>
+          <text class="edge-label" x="390" y="30" text-anchor="middle">1</text>
+        </svg>
+        </div>
+        <figcaption>Figure 1. The machine. The arrow with no source marks the start state; the double circle marks the accepting state.</figcaption>
+      </figure>
+    </section>
+
+    <section class="block" aria-labelledby="h-ref">
+      <h2 id="h-ref">Transition function</h2>
+      <div id="dfa-reference">
+        <table>
+          <caption>Table 1. Transition function.</caption>
+          <thead><tr><th scope="col">State</th><th scope="col">Input 0</th><th scope="col">Input 1</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">q0 (start)</th><td>q0</td><td>q1</td></tr>
+            <tr><th scope="row">q1 (accepting)</th><td>q0</td><td>q1</td></tr>
+          </tbody>
+        </table>
+        <dl class="defn">
+          <dt>States</dt><dd>Q = {q0, q1}</dd>
+          <dt>Alphabet</dt><dd>Σ = {0, 1}</dd>
+          <dt>Start state</dt><dd>q0</dd>
+          <dt>Accepting</dt><dd>F = {q1}</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="h-tests">
+      <h2 id="h-tests">Test cases</h2>
+      <div class="row" style="margin-top:0">
+        <button id="tests-btn" class="btn btn--secondary" type="button">Run test cases</button>
+        <p id="tests-summary" class="help" style="margin:0" aria-live="polite">18 of 18 passed.</p>
+      </div>
+      <div id="tests-table" class="scroll" tabindex="0" role="region" aria-label="Test cases, scrollable" style="margin-top:12px">
+        <table>
+          <thead><tr><th scope="col">#</th><th scope="col">Input</th><th scope="col">Expected</th><th scope="col">Actual</th><th scope="col">Status</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>1</td><td>ACCEPTED</td><td>ACCEPTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>2</td><td>0</td><td>REJECTED</td><td>REJECTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>3</td><td>11</td><td>ACCEPTED</td><td>ACCEPTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>4</td><td>10</td><td>REJECTED</td><td>REJECTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>5</td><td>101</td><td>ACCEPTED</td><td>ACCEPTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>6</td><td>100</td><td>REJECTED</td><td>REJECTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>7</td><td>111</td><td>ACCEPTED</td><td>ACCEPTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>8</td><td>110</td><td>REJECTED</td><td>REJECTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>9</td><td>10101</td><td>ACCEPTED</td><td>ACCEPTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>10</td><td>10100</td><td>REJECTED</td><td>REJECTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>11</td><td>0000</td><td>REJECTED</td><td>REJECTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>12</td><td>0001</td><td>ACCEPTED</td><td>ACCEPTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>13</td><td>1110</td><td>REJECTED</td><td>REJECTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>14</td><td>000000001</td><td>ACCEPTED</td><td>ACCEPTED</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>15</td><td>1021</td><td>Error</td><td>Error</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>16</td><td>10a1</td><td>Error</td><td>Error</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>17</td><td>10 1</td><td>Error</td><td>Error</td><td class="pass">✓ PASS</td></tr>
+            <tr><td>18</td><td>ε (empty)</td><td>REJECTED in q0</td><td>REJECTED in q0</td><td class="pass">✓ PASS</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<section class="gallery" aria-labelledby="h-gallery">
+  <h2 id="h-gallery">Design states (reference only, not part of the application)</h2>
+  <p>Each state below is a static example of the same components. The application shows one state at a time.</p>
+  <div class="gallery-grid">
+
+    <div>
+      <p class="help" style="margin:0 0 6px">Idle</p>
+      <div class="result result--idle"><p class="reason" style="margin:0">Enter a string and check it.</p></div>
+    </div>
+
+    <div>
+      <p class="help" style="margin:0 0 6px">Invalid input (1021)</p>
+      <div class="error">
+        <p class="err-head"><span aria-hidden="true">✕</span> ERROR: Invalid input. The DFA only accepts the symbols 0 and 1.</p>
+        <p>Found “2” at position 3.</p>
+        <p>Remove the highlighted symbol and check again.</p>
+      </div>
+      <ol class="tape" style="margin-top:12px" aria-label="Invalid tape example">
+        <li class="cell"><span class="sym">1</span><span class="idx"></span></li>
+        <li class="cell"><span class="sym">0</span><span class="idx"></span></li>
+        <li class="cell cell--invalid is-invalid"><span class="sym">2</span><span class="idx"><span class="mark" aria-hidden="true">✕</span></span></li>
+        <li class="cell"><span class="sym">1</span><span class="idx"></span></li>
+      </ol>
+      <p class="result--idle" style="margin:12px 0 0">No result. Fix the input to see the transitions.</p>
+    </div>
+
+    <div>
+      <p class="help" style="margin:0 0 6px">Rejected (10100)</p>
+      <div class="result is-rejected">
+        <p class="verdict"><span class="icon" aria-hidden="true">✕</span>REJECTED</p>
+        <dl class="facts">
+          <dt>Input</dt><dd>10100</dd>
+          <dt>Start state</dt><dd>q0</dd>
+          <dt>Final state</dt><dd>q0</dd>
+        </dl>
+        <p class="reason">The last symbol read was 0, so the machine ends in q0, which is not accepting.</p>
+      </div>
+    </div>
+
+    <div>
+      <p class="help" style="margin:0 0 6px">Empty input (ε)</p>
+      <div class="result is-rejected">
+        <p class="verdict"><span class="icon" aria-hidden="true">✕</span>REJECTED</p>
+        <dl class="facts">
+          <dt>Input</dt><dd>ε (empty string)</dd>
+          <dt>Start state</dt><dd>q0</dd>
+          <dt>Final state</dt><dd>q0</dd>
+        </dl>
+        <p class="reason">No symbols were read, so the machine stays in q0, which is not accepting.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</div>
+</body>
+</html>

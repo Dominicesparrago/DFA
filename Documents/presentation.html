@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decider — presentation</title>
+<link rel="stylesheet" href="presentation.css">
+</head>
+<body>
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <defs>
+    <marker id="s8ah" viewBox="0 -4.6 12 9.2" refX="11" refY="0" markerWidth="11" markerHeight="9.2" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,4.6 L11,0 L0,-4.6 z"/>
+    </marker>
+  </defs>
+</svg>
+
+<div class="deck" id="deck">
+
+  <div class="deck__viewport" id="viewport">
+    <div class="deck__stage" id="stage">
+<section class="slide" data-layout="hero" data-title="Decider" data-steps="0" aria-label="Decider">
+  <div class="hero">
+    <p class="kicker">AL102 &middot; Automata Theory &middot; Midterm</p>
+    <h1 class="hero__title"><span class="letter" style="--at:.16s">D</span><span class="letter" style="--at:.22s">e</span><span class="letter" style="--at:.28s">c</span><span class="letter" style="--at:.34s">i</span><span class="letter" style="--at:.40s">d</span><span class="letter" style="--at:.46s">e</span><span class="letter" style="--at:.52s">r</span></h1>
+    <p class="hero__sub">DFA Input String Acceptance Checker</p>
+    <hr class="hero__rule">
+    <ol class="tape" aria-label="The input 101">
+      <li class="cell"><span class="sym">1</span><span class="idx">1</span></li>
+      <li class="cell" style="--at:1.18s"><span class="sym">0</span><span class="idx">2</span></li>
+      <li class="cell" style="--at:1.30s"><span class="sym">1</span><span class="idx">3</span></li>
+    </ol>
+    <div class="plate plate--tight fig" style="width:280px">
+      <svg viewBox="0 0 420 260" role="img" aria-label="Two states, q0 and q1. The machine reads 1, 0, 1: q0 to q1, back to q0, on to q1, which is accepting.">
+        <defs>
+          <marker id="s1ah" viewBox="0 -4.6 12 9.2" refX="11" refY="0" markerWidth="11" markerHeight="9.2" markerUnits="userSpaceOnUse" orient="auto">
+            <path d="M0,4.6 L11,0 L0,-4.6 z"/>
+          </marker>
+        </defs>
+        <path class="edge draw" pathLength="1" style="--at:1.34s;--draw-dur:460ms" d="M20,120 L66,120"/>
+        <path class="edge draw" pathLength="1" style="--at:1.46s;--draw-dur:460ms" d="M134,120 L188,120"/>
+        <path class="edge draw" pathLength="1" style="--at:1.70s;--draw-dur:560ms" d="M205.91,154.4 C205.91,214.4 119.5,207.85 119.5,147.85"/>
+        <path class="edge draw" pathLength="1" style="--at:1.94s;--draw-dur:560ms" d="M66.22,100.5 C57.78,37 142.22,37 133.78,100.5"/>
+        <path class="edge draw" pathLength="1" style="--at:2.18s;--draw-dur:560ms" d="M189.3,96.5 C179.12,29 280.88,29 270.7,96.5"/>
+        <g style="--at:1.34s"><path class="head edge" d="M66,120 L55,114.7 L55,125.3 Z" fill="var(--ink)" stroke="none"/></g>
+        <g style="--at:1.46s"><path class="head edge" d="M188,120 L177,114.7 L177,125.3 Z" fill="var(--ink)" stroke="none"/></g>
+        <g style="--at:1.70s"><path class="head edge" d="M119.5,147.9 L123.6,137 L114.6,138.9 Z" fill="var(--ink)" stroke="none"/></g>
+        <g style="--at:1.94s"><path class="head edge" d="M133.8,100.5 L131.3,89 L122.1,92.9 Z" fill="var(--ink)" stroke="none"/></g>
+        <g style="--at:2.18s"><path class="head edge" d="M270.7,96.5 L268.2,85 L259,88.9 Z" fill="var(--ink)" stroke="none"/></g>
+        <text class="edge-label" x="161" y="106" text-anchor="middle" style="--at:1.94s">1</text>
+        <text class="edge-label" x="162.7" y="220" text-anchor="middle" style="--at:2.06s">0</text>
+        <text class="edge-label" x="100" y="36" text-anchor="middle" style="--at:2.18s">0</text>
+        <text class="edge-label" x="230" y="29" text-anchor="middle" style="--at:2.30s">1</text>
+        <g class="state" style="--at:1.20s">
+          <circle class="core" cx="100" cy="120" r="34"/>
+          <text class="node-label" x="100" y="128" text-anchor="middle">q0</text>
+        </g>
+        <g class="state" style="--at:1.28s">
+          <circle class="ring" cx="230" cy="120" r="42"/>
+          <circle class="core" cx="230" cy="120" r="34"/>
+          <text class="node-label" x="230" y="128" text-anchor="middle">q1</text>
+        </g>
+      </svg>
+    </div>
+
+    <p class="verdict"><span>Accepted</span></p>
+    <p class="hero__note">The walk reads 1, 0, 1 and finishes in q1 &mdash; the accepting state.</p>
+    <p class="hero__foot">AL102 Automata Theory &middot; Python 3 &middot; PyWebView &middot; vanilla HTML, CSS, JS</p>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="Why this matters" data-steps="2">
+  <header class="slide__head">
+    <p class="kicker">01 &middot; Problem &amp; motivation</p>
+    <h2 class="slide__title">A verdict alone proves nothing</h2>
+  </header>
+  <div class="slide__body lay-split lay-split--wide-left">
+    <div class="lay-stack">
+      <p class="slide__lede" data-step="0">The brief is explicit. An automaton that returns the right
+        answer is not the deliverable; the reader has to be able to <em>watch</em> the machine get there.</p>
+      <div class="callout" data-step="1">
+        <p>&ldquo;A correct final answer without a visible transition trace is not enough for the assignment.&rdquo;</p>
+        <p class="slide__note">&mdash; Part A specification, &sect;1</p>
+      </div>
+      <div class="board" data-step="2" style="padding-top:30px">
+        <h3 class="tag">What it has to show</h3>
+        <p class="board__text">Six things, for every valid input string: the string itself, the starting
+          state, each symbol and its transition, the complete state flow, the final state, and the verdict.
+          They are six separate readouts, not one number with an explanation attached.</p>
+      </div>
+    </div>
+
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">Grading matrix</h3>
+      <p class="board__text" style="margin-bottom:12px">Correctness, transitions, processing and
+        acceptance carry <strong>60 of the 100</strong> points.</p>
+      <div class="bars">
+        <div class="row"><span class="name">DFA concept &amp; correctness</span><span class="val">20</span>
+          <span class="track"><i class="fill is-key" style="--w:100%"></i></span></div>
+        <div class="row"><span class="name">Transition table &amp; state diagram</span><span class="val">15</span>
+          <span class="track"><i class="fill is-key" style="--w:75%"></i></span></div>
+        <div class="row"><span class="name">Input string processing</span><span class="val">15</span>
+          <span class="track"><i class="fill is-key" style="--w:75%"></i></span></div>
+        <div class="row"><span class="name">Program functionality</span><span class="val">15</span>
+          <span class="track"><i class="fill" style="--w:75%"></i></span></div>
+        <div class="row"><span class="name">Accepted / rejected logic</span><span class="val">10</span>
+          <span class="track"><i class="fill is-key" style="--w:50%"></i></span></div>
+        <div class="row"><span class="name">Input validation</span><span class="val">5</span>
+          <span class="track"><i class="fill" style="--w:25%"></i></span></div>
+        <div class="row"><span class="name">UI / presentation</span><span class="val">5</span>
+          <span class="track"><i class="fill" style="--w:25%"></i></span></div>
+        <div class="row"><span class="name">Documentation</span><span class="val">5</span>
+          <span class="track"><i class="fill" style="--w:25%"></i></span></div>
+        <div class="row"><span class="name">Demonstration</span><span class="val">5</span>
+          <span class="track"><i class="fill" style="--w:25%"></i></span></div>
+        <div class="row"><span class="name">Individual understanding</span><span class="val">5</span>
+          <span class="track"><i class="fill" style="--w:25%"></i></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="The research question" data-steps="2">
+  <header class="slide__head">
+    <p class="kicker">02 &middot; Research question</p>
+    <h2 class="slide__title">What does &ldquo;ends in 1&rdquo; mean, formally?</h2>
+  </header>
+  <div class="slide__body lay-split">
+    <div class="lay-stack">
+      <p class="slide__lede" data-step="0">The language is described in words: <em>the set of binary strings whose last symbol is 1</em>.
+        Intuition is not a definition. The question for this project is whether a two-state machine can capture
+        that idea precisely, with no dead state and no third state.</p>
+      <div class="board" data-step="1" style="padding-top:30px">
+        <h3 class="tag">The question, stated</h3>
+        <p class="board__text">Design a DFA over &Sigma; = {0, 1} that accepts exactly the strings ending in 1.
+          The deliverable is the machine <em>and</em> the visible trace of a run &mdash; not the answer alone.</p>
+        <dl class="defn" style="margin-top:14px">
+          <dt>Intuition</dt><dd>&ldquo;the string finishes with a 1&rdquo;</dd>
+          <dt>Formal target</dt><dd>L = { w &isin; {0,1}* | w<sub>|w|</sub> = 1 }</dd>
+          <dt>Constraint</dt><dd>minimal states, no dead state needed</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">Why two states might be enough</h3>
+      <p class="board__text">The machine only needs to remember one thing: whether the last symbol read was a 1.
+        That is one bit of information. Two states can carry one bit &mdash; one for &ldquo;last was 0 (or nothing yet)&rdquo;,
+        one for &ldquo;last was 1&rdquo;.</p>
+      <div class="callout" style="margin-top:16px">
+        <p><strong>A dead state is not required here.</strong> Both symbols are defined in both states, so every
+          input has a next state. A trap state would only reject strings that should be accepted.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="What this builds on" data-steps="2">
+  <header class="slide__head">
+    <p class="kicker">03 &middot; Background &amp; related work</p>
+    <h2 class="slide__title slide__title--wide">The DFA model, and what it costs</h2>
+  </header>
+  <div class="slide__body lay-split lay-split--wide-right">
+    <div class="lay-stack">
+      <p class="slide__lede" data-step="0">A deterministic finite automaton is the standard model for &ldquo;regular&rdquo; languages &mdash; those a
+        finite machine can decide by memory alone, with no stack and no counter. The definition is older than
+        the assignment, and it is the same definition the code implements.</p>
+      <div class="board" data-step="1" style="padding-top:30px">
+        <h3 class="tag">The model (standard)</h3>
+        <dl class="defn">
+          <dt>States</dt><dd>a finite set Q</dd>
+          <dt>Alphabet</dt><dd>a finite set &Sigma;</dd>
+          <dt>Transition</dt><dd>&delta; : Q &times; &Sigma; &rarr; Q</dd>
+          <dt>Start</dt><dd>q<sub>0</sub> &isin; Q</dd>
+          <dt>Accepting</dt><dd>F &subseteq; Q</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">Why this problem is a good teaching example</h3>
+      <ul class="checks">
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>Minimal machine &mdash; two states, easy to draw and to trace by hand.</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>No dead state &mdash; every symbol is defined everywhere, so there is no trap to confuse the reader.</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>One bit of memory &mdash; the state is the only thing remembered, which is the point of the model.</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>A clear acceptance rule &mdash; final state decides, not the last character.</span></li>
+      </ul>
+      <div class="callout" style="margin-top:16px">
+        <p><strong>Related approach that fails here.</strong> A machine that looks for the substring &ldquo;101&rdquo;
+          needs more states and a different language. That is a different question &mdash; and out of scope, on purpose.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="The machine defined" data-steps="3">
+  <header class="slide__head">
+    <p class="kicker">04 &middot; The automaton</p>
+    <h2 class="slide__title">M = (Q, &Sigma;, &delta;, q<sub>0</sub>, F)</h2>
+  </header>
+  <div class="slide__body lay-split lay-split--wide-right">
+    <div class="lay-stack">
+      <div class="board" data-step="0" style="padding-top:30px">
+        <h3 class="tag">Table 1 &middot; &delta;</h3>
+        <table class="tbl">
+          <thead><tr><th scope="col">State</th><th scope="col">Input 0</th><th scope="col">Input 1</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">&rarr; q0 (start)</th><td>q0</td><td>q1</td></tr>
+            <tr><th scope="row">* q1 (accepting)</th><td>q0</td><td>q1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="board board--plain" data-step="1">
+        <h3 class="tag">Definition</h3>
+        <dl class="defn">
+          <dt>States</dt><dd>Q = {q0, q1}</dd>
+          <dt>Alphabet</dt><dd>&Sigma; = {0, 1}</dd>
+          <dt>Start state</dt><dd>q0</dd>
+          <dt>Accepting</dt><dd>F = {q1}</dd>
+          <dt>Dead state</dt><dd>none</dd>
+          <dt>Language</dt><dd>w ends in 1</dd>
+        </dl>
+      </div>
+      <div class="callout" data-step="2">
+        <p><strong>Two states, no dead state.</strong> Both symbols are defined in both states, so no input
+          can ever get stuck. A trap here could only reject perfectly good strings.</p>
+      </div>
+    </div>
+
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">Figure 1 &middot; the machine</h3>
+      <div class="plate fig" style="max-width:452px;margin:0 auto">
+        <svg viewBox="0 0 420 260" role="img" aria-label="State diagram: q0 is the start state, marked by an arrow with no source. q1 is accepting and drawn with a double ring. q0 loops on 0, goes to q1 on 1; q1 goes back to q0 on 0 and loops on 1.">
+          <defs>
+            <marker id="s3ah" viewBox="0 -4.6 12 9.2" refX="11" refY="0" markerWidth="11" markerHeight="9.2" markerUnits="userSpaceOnUse" orient="auto">
+              <path d="M0,4.6 L11,0 L0,-4.6 z"/>
+            </marker>
+          </defs>
+          <g id="s3edges">
+            <path id="s3-start" class="edge" pathLength="1" d="M20,120 L66,120" marker-end="url(#s3ah)"/>
+            <path id="s3-q0-q1-1" class="edge" pathLength="1" d="M134,120 L188,120" marker-end="url(#s3ah)"/>
+            <path id="s3-q1-q0-0" class="edge" pathLength="1" d="M205.91,154.4 C205.91,214.4 119.5,207.85 119.5,147.85" marker-end="url(#s3ah)"/>
+            <path id="s3-q0-q0-0" class="edge" pathLength="1" d="M66.22,100.5 C57.78,37 142.22,37 133.78,100.5" marker-end="url(#s3ah)"/>
+            <path id="s3-q1-q1-1" class="edge" pathLength="1" d="M189.3,96.5 C179.12,29 280.88,29 270.7,96.5" marker-end="url(#s3ah)"/>
+          </g>
+          <g id="s3labels">
+            <text id="lbl-s3-q0-q1-1" class="edge-label" x="161" y="106" text-anchor="middle">1</text>
+            <text id="lbl-s3-q1-q0-0" class="edge-label" x="162.7" y="220" text-anchor="middle">0</text>
+            <text id="lbl-s3-q0-q0-0" class="edge-label" x="100" y="36" text-anchor="middle">0</text>
+            <text id="lbl-s3-q1-q1-1" class="edge-label" x="230" y="29" text-anchor="middle">1</text>
+          </g>
+          <g id="node-q0" class="state"><circle class="core" cx="100" cy="120" r="34"/><text class="node-label" x="100" y="128" text-anchor="middle">q0</text></g>
+          <g id="node-q1" class="state"><circle class="ring" cx="230" cy="120" r="42"/><circle class="core" cx="230" cy="120" r="34"/><text class="node-label" x="230" y="128" text-anchor="middle">q1</text></g>
+        </svg>
+      </div>
+      <p class="slide__note" style="margin-top:12px">Every arrow carries the input symbol that causes it, so
+        the whole transition function is on the diagram. The start arrow carries nothing, and q1 keeps its
+        double ring at rest.</p>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="What the states mean" data-steps="2">
+  <header class="slide__head">
+    <p class="kicker">05 &middot; Reading the machine</p>
+    <h2 class="slide__title slide__title--wide">Two states, one bit of memory</h2>
+  </header>
+  <div class="slide__body lay-split" style="align-content: space-between">
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">q0 &middot; not accepting</h3>
+      <p class="mono" style="font-size:38px;line-height:1;margin:4px 0 12px">q0</p>
+      <p class="board__text">The input read so far is <strong>empty</strong>, or it <strong>ends in 0</strong>.</p>
+      <p class="board__text" style="margin-top:10px">Reading 0 stays here. Reading 1 leaves.</p>
+    </div>
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">q1 &middot; accepting</h3>
+      <p class="mono" style="font-size:38px;line-height:1;margin:4px 0 12px">q1</p>
+      <p class="board__text">The input read so far <strong>ends in 1</strong>.</p>
+      <p class="board__text" style="margin-top:10px">Reading 0 leaves. Reading 1 stays.</p>
+    </div>
+    <div class="board" data-step="1" style="grid-column:1 / -1;padding-top:30px">
+      <h3 class="tag">Worked example &middot; 10101</h3>
+      <div class="lay-row" style="align-items:center">
+        <ol class="tape" aria-label="The input 10101">
+          <li class="cell cell--sm"><span class="sym">1</span><span class="idx">1</span></li>
+          <li class="cell cell--sm"><span class="sym">0</span><span class="idx">2</span></li>
+          <li class="cell cell--sm"><span class="sym">1</span><span class="idx">3</span></li>
+          <li class="cell cell--sm"><span class="sym">0</span><span class="idx">4</span></li>
+          <li class="cell cell--sm"><span class="sym">1</span><span class="idx">5</span></li>
+        </ol>
+        <span class="mono" style="color:var(--graphite);font-size:20px">&rarr;</span>
+        <ol class="flow" aria-label="The state flow for 10101">
+          <li><span class="pill">q0</span></li>
+          <li><span class="arrow">&rarr;</span><span class="sym">1</span></li>
+          <li><span class="pill">q1</span></li>
+          <li><span class="arrow">&rarr;</span><span class="sym">0</span></li>
+          <li><span class="pill">q0</span></li>
+          <li><span class="arrow">&rarr;</span><span class="sym">1</span></li>
+          <li><span class="pill">q1</span></li>
+          <li><span class="arrow">&rarr;</span><span class="sym">0</span></li>
+          <li><span class="pill">q0</span></li>
+          <li><span class="arrow">&rarr;</span><span class="sym">1</span></li>
+          <li class="final"><span class="pill">q1</span></li>
+        </ol>
+        <span class="verdict" style="font-size:26px;margin-left:auto"><span class="icon" aria-hidden="true">&#10003;</span>Accepted</span>
+      </div>
+      <p class="slide__note" style="margin-top:14px">L = { w &isin; {0,1}* | w ends in 1 }. Acceptance is read
+        from the <strong>final state</strong>, never from the last character. So 101 and 1101 are both
+        accepted, and 1010 is rejected even though it starts with 101.</p>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="Objectives &amp; scope" data-steps="2">
+  <header class="slide__head">
+    <p class="kicker">06 &middot; Objectives &amp; scope</p>
+    <h2 class="slide__title slide__title--wide">What the brief requires on screen</h2>
+  </header>
+  <div class="slide__body lay-split" style="align-items: stretch">
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">Required interface output</h3>
+      <ul class="checks">
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>The input string</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>The starting state</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>Each input symbol and transition, e.g. <code>Step 1: q0 + 1 &rarr; q1</code></span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>The complete state flow</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>The final state</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>ACCEPTED or REJECTED</span></li>
+      </ul>
+    </div>
+    <div class="board" data-step="1" style="padding-top:30px">
+      <h3 class="tag">Required state diagram</h3>
+      <ul class="checks">
+        <li><span class="box" aria-hidden="true">&#10003;</span><span><code>q0</code> and <code>q1</code>, and no extra DFA state</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>An incoming start arrow pointing to <code>q0</code></span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span><code>q1</code> drawn as a double circle</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>All four transitions, correctly labelled</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>Self-loops <code>q0 &mdash;0&rarr; q0</code> and <code>q1 &mdash;1&rarr; q1</code></span></li>
+        <li><span class="box box--plain" aria-hidden="true">&middot;</span><span class="slide__note">A colour change alone is not a substitute for the double circle or the labels.</span></li>
+      </ul>
+      <div class="callout" style="margin-top:16px">
+        <p><strong>Out of scope, on purpose.</strong> There is no dead state in this machine, no third
+          state, and no &ldquo;contains 101&rdquo; variant. Both symbols are defined in both states.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="System design" data-steps="3">
+  <header class="slide__head">
+    <p class="kicker">08 &middot; System design</p>
+    <h2 class="slide__title">Python decides, the view renders</h2>
+  </header>
+  <div class="slide__body lay-stack" style="gap:13px">
+    <div class="fig" data-step="0" style="background:var(--surface);border:1px solid var(--graphite);border-radius:var(--radius);padding:12px 14px">
+      <svg viewBox="0 0 1120 190" role="img" aria-label="Architecture: the Python host runs app.py, which exposes Api.check and Api.run_tests over the pywebview bridge to a Chromium WebView running index.html, styles.css and script.js. Script.js renders what Python returns and decides nothing.">
+        <defs>
+          <marker id="s6ah" viewBox="0 -4.6 12 9.2" refX="11" refY="0" markerWidth="11" markerHeight="9.2" markerUnits="userSpaceOnUse" orient="auto">
+            <path d="M0,4.6 L11,0 L0,-4.6 z"/>
+          </marker>
+          <marker id="s6ahr" viewBox="0 -4.6 12 9.2" refX="11" refY="0" markerWidth="11" markerHeight="9.2" markerUnits="userSpaceOnUse" orient="auto">
+            <path d="M0,4.6 L11,0 L0,-4.6 z"/>
+          </marker>
+        </defs>
+        <rect class="box" x="4" y="4" width="398" height="182" rx="2"/>
+        <text class="small" x="20" y="26">PYTHON HOST</text>
+        <text class="label" x="20" y="50">app.py</text>
+        <text class="small" x="20" y="72">ThreadingHTTPServer on 127.0.0.1</text>
+        <text class="small" x="20" y="90">Cache-Control: no-store</text>
+        <text class="small" x="20" y="108">webview.create_window(js_api=Api())</text>
+        <rect class="box" x="20" y="120" width="366" height="58" rx="2" style="fill:var(--paper)"/>
+        <text class="label" x="34" y="141">dfa.py &mdash; the only source of truth</text>
+        <text class="tiny" x="34" y="160">automaton &middot; validate &middot; simulate &middot; run_tests</text>
+        <text class="tiny" x="34" y="174">29-case oracle &mdash; the gate on approving a baseline</text>
+        <rect class="box" x="718" y="4" width="398" height="182" rx="2"/>
+        <text class="small" x="734" y="26">CHROMIUM WEBVIEW</text>
+        <text class="label" x="734" y="50">index.html &middot; styles.css &middot; script.js</text>
+        <text class="small" x="734" y="72">buildFigure() &mdash; arrows generated from Table 1</text>
+        <text class="small" x="734" y="90">runWalk() &mdash; one step, one arrow, one row</text>
+        <rect class="box" x="734" y="120" width="366" height="58" rx="2" style="fill:var(--paper)"/>
+        <text class="label" x="748" y="141">No decisions here.</text>
+        <text class="tiny" x="748" y="160">No transition table. No validate(). No simulate().</text>
+        <text class="tiny" x="748" y="174">Every number on screen came from dfa.py.</text>
+        <path class="wire wire--ink" d="M402,60 L714,60" marker-end="url(#s6ah)"/>
+        <text class="label" x="558" y="48" text-anchor="middle">window.pywebview.api</text>
+        <text class="small" x="558" y="82" text-anchor="middle">check(text) &middot; run_tests()</text>
+
+        <path class="wire" d="M714,126 L402,126" marker-end="url(#s6ahr)"/>
+        <text class="small" x="558" y="146" text-anchor="middle">{ status, steps, flow, final, accepted }</text>
+      </svg>
+    </div>
+
+    <div class="lay-split" data-step="1">
+      <div class="dense">
+        <table class="tbl">
+          <caption>Every file owns one thing, and the contract is enforced by review.</caption>
+          <thead><tr><th scope="col">File</th><th scope="col">Owns</th><th scope="col">Never contains</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">dfa.py</th><td>automaton, validation, simulation, tests</td><td>any GUI import</td></tr>
+            <tr><th scope="row">app.py</th><td>window, no-store server, Api</td><td>decision logic</td></tr>
+            <tr><th scope="row">run_decider.py</th><td>launch, integrity, recovery</td><td>decision logic</td></tr>
+            <tr><th scope="row">index.html</th><td>structure, every ID, the ring</td><td>any arrow path or label</td></tr>
+            <tr><th scope="row">styles.css</th><td>tokens, components, motion</td><td>a hex outside :root</td></tr>
+            <tr><th scope="row">script.js</th><td>rendering, choreography, bridge</td><td>a transition table</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout" data-step="2">
+        <p><strong>Why a server instead of <code>file://</code>.</strong> WebView2 would cache
+          <code>script.js</code> and <code>styles.css</code>, so after an edit a relaunch can quietly run
+          the previous build. Everything is served <code>no-store</code>.</p>
+        <p class="slide__note">The bridge is async and returns data, never a verdict the view may
+          re-derive.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="statement" data-title="The one rule" data-steps="3">
+  <header class="slide__head">
+    <p class="kicker">09 &middot; The invariant</p>
+  </header>
+  <div class="slide__body lay-split lay-split--wide-right" style="align-items:center">
+    <div class="lay-stack">
+      <p class="statement" data-step="0"><span class="mark">dfa.py decides.</span><br><span class="quiet">script.js renders.</span></p>
+    </div>
+    <div class="lay-stack">
+      <pre class="code" data-step="1"># the one rule
+All DFA logic lives in <b>dfa.py</b>. <b>script.js</b> renders what Python
+returns and must never decide anything.
+
+# corollary
+<i>no innerHTML          no insertAdjacentHTML</i>
+<i>no string-concatenated markup          user input can contain anything</i>
+every value is written with textContent
+
+# consequences
+script.js has <b>no transition table</b>, no validate(), no simulate()
+script.js contains <b>no hex colour</b></pre>
+      <div class="callout" data-step="2">
+        <p>Two implementations can disagree. There is only one. If the figure, Table 1 and
+          <code>dfa.py</code> ever disagree, <code>dfa.py</code> is right.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="Core features" data-steps="4">
+  <header class="slide__head">
+    <p class="kicker">10 &middot; Core features</p>
+    <h2 class="slide__title slide__title--wide">Eight surfaces, one answer</h2>
+  </header>
+  <div class="slide__body" style="align-content:stretch">
+    <div class="feature-grid">
+
+      <div class="board feature" data-step="0">
+        <h3 class="feature__name">Input</h3>
+        <div class="feature__fig fig">
+          <svg viewBox="0 0 200 70" role="img" aria-label="A text field containing 10101, with Check string and Clear buttons.">
+            <rect class="box" x="8" y="16" width="150" height="26" rx="2" style="fill:var(--paper)"/>
+            <text class="label" x="18" y="35">10101</text>
+            <rect class="box box--ink" x="8" y="48" width="70" height="16" rx="2"/>
+            <text class="small" x="16" y="60" style="fill:var(--paper)">Check</text>
+            <rect class="box" x="84" y="48" width="48" height="16" rx="2"/>
+            <text class="small" x="92" y="60">Clear</text>
+          </svg>
+        </div>
+        <p class="feature__text">Binary string field, live validation, and four one-tap examples:
+          1, 0, 101, 1021.</p>
+      </div>
+
+      <div class="board feature" data-step="0">
+        <h3 class="feature__name">Result</h3>
+        <div class="feature__fig fig">
+          <svg viewBox="0 0 200 70" role="img" aria-label="The word Accepted with a tick, underlined.">
+            <text class="label" x="10" y="34" style="font-size:22px;fill:var(--accept)">&#10003; Accepted</text>
+            <path class="edge" d="M10,40 L128,40" style="stroke:var(--accept);stroke-width:3"/>
+          </svg>
+        </div>
+        <p class="feature__text">A word <em>and</em> an icon, never colour alone. Input, start,
+          final state and the complete flow, then the reason in one sentence.</p>
+      </div>
+
+      <div class="board feature" data-step="1">
+        <h3 class="feature__name">Figure</h3>
+        <div class="feature__fig fig">
+          <svg viewBox="0 0 200 70" role="img" aria-label="Two state circles joined by an arrow, the second drawn with a double ring.">
+            <path class="edge" d="M6,44 L36,44" marker-end="url(#s8ah)"/>
+            <path class="edge" d="M100,44 L164,44" marker-end="url(#s8ah)"/>
+            <circle class="core" cx="62" cy="44" r="24"/>
+            <text class="node-label" x="62" y="51" text-anchor="middle" style="font-size:16px">q0</text>
+            <circle class="ring" cx="140" cy="44" r="28"/>
+            <circle class="core" cx="140" cy="44" r="24"/>
+            <text class="node-label" x="140" y="51" text-anchor="middle" style="font-size:16px">q1</text>
+            <text class="edge-label" x="132" y="32" text-anchor="middle" style="font-size:14px">1</text>
+          </svg>
+        </div>
+        <p class="feature__text">Two views of one machine &mdash; <strong>Simple</strong> (the definition)
+          and <strong>Longer</strong> (a trace of the run). Never two machines.</p>
+      </div>
+
+      <div class="board feature" data-step="1">
+        <h3 class="feature__name">Tape</h3>
+        <div class="feature__fig fig">
+          <svg viewBox="0 0 200 70" role="img" aria-label="Four tape cells reading 1, 0, 1, 0; the second is highlighted as the cell being read.">
+            <rect class="box" x="8" y="16" width="38" height="42" rx="3" style="fill:var(--paper)"/>
+            <text class="label" x="27" y="44" text-anchor="middle" style="font-size:18px">1</text>
+            <rect class="box box--accent" x="54" y="16" width="38" height="42" rx="3"/>
+            <text class="label" x="73" y="44" text-anchor="middle" style="font-size:18px">0</text>
+            <rect class="box" x="100" y="16" width="38" height="42" rx="3" style="fill:var(--paper)"/>
+            <text class="label" x="119" y="44" text-anchor="middle" style="font-size:18px">1</text>
+            <rect class="box" x="146" y="16" width="38" height="42" rx="3" style="fill:var(--paper)"/>
+            <text class="label" x="165" y="44" text-anchor="middle" style="font-size:18px">0</text>
+          </svg>
+        </div>
+        <p class="feature__text">One cell per symbol. The reading cell takes the yellow lamp and lifts
+          as the walk reaches it.</p>
+      </div>
+
+      <div class="board feature" data-step="2">
+        <h3 class="feature__name">State flow</h3>
+        <div class="feature__fig fig">
+          <svg viewBox="0 0 200 70" role="img" aria-label="State pills q0, q1, q0, q1 joined by arrows; the last is filled.">
+            <rect class="box" x="4" y="24" width="34" height="22" rx="11"/>
+            <text class="label" x="21" y="39" text-anchor="middle" style="font-size:13px">q0</text>
+            <text class="label" x="52" y="39" style="font-size:13px">&rarr;</text>
+            <rect class="box" x="66" y="24" width="34" height="22" rx="11"/>
+            <text class="label" x="83" y="39" text-anchor="middle" style="font-size:13px">q1</text>
+            <text class="label" x="112" y="39" style="font-size:13px">&rarr;</text>
+            <rect class="box" x="124" y="24" width="34" height="22" rx="11"/>
+            <text class="label" x="141" y="39" text-anchor="middle" style="font-size:13px">q0</text>
+            <rect class="box box--ink" x="168" y="24" width="30" height="22" rx="11"/>
+            <text class="label" x="183" y="39" text-anchor="middle" style="font-size:13px;fill:var(--surface)">q1</text>
+          </svg>
+        </div>
+        <p class="feature__text">Every state the machine stood in, start and final included. The
+          final pill is filled.</p>
+      </div>
+
+      <div class="board feature" data-step="2">
+        <h3 class="feature__name">Execution Steps</h3>
+        <div class="feature__fig fig">
+          <svg viewBox="0 0 200 70" role="img" aria-label="Four table rows: step, symbol, transition, state.">
+            <path class="wire" d="M4,14 L196,14"/>
+            <text class="small" x="6" y="10">#</text>
+            <text class="small" x="44" y="10">sym</text>
+            <text class="small" x="82" y="10">q0 &rarr; q1</text>
+            <text class="small" x="156" y="10">state</text>
+            <text class="small" x="6" y="30">1</text><text class="small" x="46" y="30">1</text><text class="small" x="82" y="30">q0 &rarr; q1</text><text class="small" x="158" y="30">q1</text>
+            <rect x="4" y="36" width="192" height="16" fill="var(--highlight)"/>
+            <text class="small" x="6" y="48">2</text><text class="small" x="46" y="48">0</text><text class="small" x="82" y="48">q1 &rarr; q0</text><text class="small" x="158" y="48">q0</text>
+            <path class="wire" d="M4,58 L196,58"/>
+          </svg>
+        </div>
+        <p class="feature__text">Container B. One row per symbol, generated from Python's
+          <code>steps</code>. Never drawn inside the diagram.</p>
+      </div>
+
+      <div class="board feature" data-step="3">
+        <h3 class="feature__name">Transition function</h3>
+        <div class="feature__fig fig">
+          <svg viewBox="0 0 200 70" role="img" aria-label="Table 1: the transition function, with the current row highlighted.">
+            <path class="wire wire--ink" d="M4,16 L196,16"/>
+            <text class="small" x="6" y="12">state</text>
+            <text class="small" x="96" y="12">0</text>
+            <text class="small" x="150" y="12">1</text>
+            <text class="small" x="6" y="32">&rarr; q0</text><text class="small" x="98" y="32">q0</text><text class="small" x="152" y="32">q1</text>
+            <rect x="4" y="38" width="192" height="18" fill="var(--highlight)"/>
+            <text class="small" x="6" y="51">* q1</text><text class="small" x="98" y="51">q0</text><text class="small" x="152" y="51">q1</text>
+          </svg>
+        </div>
+        <p class="feature__text">Table 1, with the definition beside it. The active row is filled, so
+          the table is a readout, not a caption.</p>
+      </div>
+
+      <div class="board feature" data-step="3">
+        <h3 class="feature__name">Test cases</h3>
+        <div class="feature__fig fig">
+          <svg viewBox="0 0 200 70" role="img" aria-label="29 of 29 test cases passed.">
+            <text class="label" x="10" y="44" style="font-size:30px;fill:var(--accept)">29/29</text>
+            <text class="small" x="96" y="36">passed</text>
+            <text class="small" x="96" y="52">each asserts</text>
+            <text class="small" x="96" y="66">accept + final state</text>
+          </svg>
+        </div>
+        <p class="feature__text">The oracle from <code>dfa.py</code>, run in the window. PASS and FAIL
+          each carry a word, never just a colour.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="The walk" data-steps="5">
+  <header class="slide__head">
+    <p class="kicker">11 &middot; System workflow</p>
+    <h2 class="slide__title">One step, one arrow, one row</h2>
+  </header>
+  <div class="slide__body lay-split lay-split--wide-left">
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">Container A &middot; the machine</h3>
+      <div class="plate fig" style="max-width:436px;margin:0 auto">
+        <svg viewBox="0 0 420 260" role="img" aria-label="The two-state machine, animating a walk over the input 10101.">
+          <defs>
+            <marker id="s9ah" viewBox="0 -4.6 12 9.2" refX="11" refY="0" markerWidth="11" markerHeight="9.2" markerUnits="userSpaceOnUse" orient="auto">
+              <path d="M0,4.6 L11,0 L0,-4.6 z"/>
+            </marker>
+            <marker id="s9ahf" viewBox="0 -4.6 12 9.2" refX="11" refY="0" markerWidth="11" markerHeight="9.2" markerUnits="userSpaceOnUse" orient="auto" class="accent">
+              <path d="M0,4.6 L11,0 L0,-4.6 z"/>
+            </marker>
+          </defs>
+          <g id="s9edges">
+            <path id="w-start" class="edge" pathLength="1" d="M20,120 L66,120" marker-end="url(#s9ah)"/>
+            <path id="w-q0-q1-1" class="edge" pathLength="1" d="M134,120 L188,120" marker-end="url(#s9ah)"/>
+            <path id="w-q1-q0-0" class="edge" pathLength="1" d="M205.91,154.4 C205.91,214.4 119.5,207.85 119.5,147.85" marker-end="url(#s9ah)"/>
+            <path id="w-q0-q0-0" class="edge" pathLength="1" d="M66.22,100.5 C57.78,37 142.22,37 133.78,100.5" marker-end="url(#s9ah)"/>
+            <path id="w-q1-q1-1" class="edge" pathLength="1" d="M189.3,96.5 C179.12,29 280.88,29 270.7,96.5" marker-end="url(#s9ah)"/>
+          </g>
+          <g id="s9labels">
+            <text class="edge-label" x="161" y="106" text-anchor="middle">1</text>
+            <text class="edge-label" x="162.7" y="220" text-anchor="middle">0</text>
+            <text class="edge-label" x="100" y="36" text-anchor="middle">0</text>
+            <text class="edge-label" x="230" y="29" text-anchor="middle">1</text>
+          </g>
+          <g id="w-node-q0"><circle class="core" cx="100" cy="120" r="34"/><text class="node-label" x="100" y="128" text-anchor="middle">q0</text></g>
+          <g id="w-node-q1"><circle class="ring" cx="230" cy="120" r="42"/><circle class="core" cx="230" cy="120" r="34"/><text class="node-label" x="230" y="128" text-anchor="middle">q1</text></g>
+          <circle id="w-token" class="token" cx="0" cy="0" r="7" aria-hidden="true"/>
+        </svg>
+      </div>
+      <ol class="tape" data-walk style="margin-top:12px;justify-content:center" aria-label="The input 10101">
+        <li class="cell cell--sm" data-step="1"><span class="sym">1</span><span class="idx">1</span></li>
+        <li class="cell cell--sm" data-step="2"><span class="sym">0</span><span class="idx">2</span></li>
+        <li class="cell cell--sm" data-step="3"><span class="sym">1</span><span class="idx">3</span></li>
+        <li class="cell cell--sm" data-step="4"><span class="sym">0</span><span class="idx">4</span></li>
+        <li class="cell cell--sm" data-step="5"><span class="sym">1</span><span class="idx">5</span></li>
+      </ol>
+    </div>
+
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">Container B &middot; execution steps</h3>
+      <table class="tbl" data-walk>
+        <thead><tr><th scope="col">Step</th><th scope="col">Symbol</th><th scope="col">Transition</th><th scope="col">State</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Start</th><td>&mdash;</td><td>&mdash;</td><td>q0</td></tr>
+          <tr data-step="1" data-edge="w-q0-q1-1"><th scope="row">1</th><td>1</td><td>q0 &rarr; q1</td><td>q1</td></tr>
+          <tr data-step="2" data-edge="w-q1-q0-0"><th scope="row">2</th><td>0</td><td>q1 &rarr; q0</td><td>q0</td></tr>
+          <tr data-step="3" data-edge="w-q0-q1-1"><th scope="row">3</th><td>1</td><td>q0 &rarr; q1</td><td>q1</td></tr>
+          <tr data-step="4" data-edge="w-q1-q0-0"><th scope="row">4</th><td>0</td><td>q1 &rarr; q0</td><td>q0</td></tr>
+          <tr data-step="5" data-edge="w-q0-q1-1"><th scope="row">5</th><td>1</td><td>q0 &rarr; q1 <span class="chip" style="border-style:solid;padding:0 5px">Final</span></td><td>q1</td></tr>
+        </tbody>
+      </table>
+      <ol class="flow" data-walk style="margin-top:16px" aria-label="The state flow for 10101">
+        <li data-step="0"><span class="pill">q0</span></li>
+        <li data-step="1"><span class="arrow">&rarr;</span></li>
+        <li data-step="1"><span class="pill">q1</span></li>
+        <li data-step="2"><span class="arrow">&rarr;</span></li>
+        <li data-step="2"><span class="pill">q0</span></li>
+        <li data-step="3"><span class="arrow">&rarr;</span></li>
+        <li data-step="3"><span class="pill">q1</span></li>
+        <li data-step="4"><span class="arrow">&rarr;</span></li>
+        <li data-step="4"><span class="pill">q0</span></li>
+        <li data-step="5"><span class="arrow">&rarr;</span></li>
+        <li class="final" data-step="5"><span class="pill">q1</span></li>
+      </ol>
+      <p class="slide__note" style="margin-top:14px">Everything here &mdash; the tape, the rows, the flow and
+        the verdict &mdash; renders <strong>before</strong> the walk and is never gated by it. The token is
+        the only thing that moves. A finished walk leaves every row complete, including the last.</p>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="Two views of one machine" data-steps="2">
+  <header class="slide__head">
+    <p class="kicker">07 &middot; Feature focus</p>
+    <h2 class="slide__title slide__title--wide">One machine, two drawings</h2>
+  </header>
+  <div class="slide__body lay-split">
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">Simple diagram</h3>
+      <div class="plate fig">
+        <svg viewBox="0 0 420 260" role="img" aria-label="The simple diagram: two states, q0 and q1, with q1 double-ringed.">
+          <defs><marker id="s10a" viewBox="0 -4.6 12 9.2" refX="11" refY="0" markerWidth="11" markerHeight="9.2" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,4.6 L11,0 L0,-4.6 z"/></marker></defs>
+          <path class="edge" pathLength="1" d="M20,120 L66,120" marker-end="url(#s10a)"/>
+          <path class="edge" pathLength="1" d="M134,120 L188,120" marker-end="url(#s10a)"/>
+          <path class="edge" pathLength="1" d="M205.91,154.4 C205.91,214.4 119.5,207.85 119.5,147.85" marker-end="url(#s10a)"/>
+          <path class="edge" pathLength="1" d="M66.22,100.5 C57.78,37 142.22,37 133.78,100.5" marker-end="url(#s10a)"/>
+          <path class="edge" pathLength="1" d="M189.3,96.5 C179.12,29 280.88,29 270.7,96.5" marker-end="url(#s10a)"/>
+          <text class="edge-label" x="161" y="106" text-anchor="middle">1</text>
+          <text class="edge-label" x="162.7" y="220" text-anchor="middle">0</text>
+          <text class="edge-label" x="100" y="36" text-anchor="middle">0</text>
+          <text class="edge-label" x="230" y="29" text-anchor="middle">1</text>
+          <circle class="core" cx="100" cy="120" r="34"/><text class="node-label" x="100" y="128" text-anchor="middle">q0</text>
+          <circle class="ring" cx="230" cy="120" r="42"/><circle class="core" cx="230" cy="120" r="34"/><text class="node-label" x="230" y="128" text-anchor="middle">q1</text>
+        </svg>
+      </div>
+      <p class="board__text" style="margin-top:12px">The <strong>definition</strong>. Two nodes, four
+        transitions each carrying its symbol, and the accepting ring on <code>q1</code> at all times. It
+        never grows, however long the input is.</p>
+    </div>
+
+    <div class="board" data-step="1" style="padding-top:30px">
+      <h3 class="tag">Longer diagram &middot; a trace</h3>
+      <div class="plate fig">
+        <svg viewBox="0 0 420 250" role="img" aria-label="The longer diagram: a trace of one node per step. The large label on each node is the step number and the small label underneath is the state the machine was really in. Faint dashed arrows labelled 0 lead from every step to qd.">
+          <defs><marker id="s10b" viewBox="0 -4.6 12 9.2" refX="11" refY="0" markerWidth="11" markerHeight="9.2" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,4.6 L11,0 L0,-4.6 z"/></marker></defs>
+          <path class="wire" d="M92,80 L128,80" marker-end="url(#s10b)"/>
+          <path class="wire" d="M182,80 L218,80" marker-end="url(#s10b)"/>
+          <path class="wire" d="M272,80 L308,80" marker-end="url(#s10b)"/>
+          <text class="edge-label" x="110" y="68" text-anchor="middle" style="font-size:15px">1</text>
+          <text class="edge-label" x="200" y="68" text-anchor="middle" style="font-size:15px">0</text>
+          <text class="edge-label" x="290" y="68" text-anchor="middle" style="font-size:15px">1</text>
+          <g><circle class="core" cx="62" cy="80" r="30"/><text class="node-label" x="62" y="78" text-anchor="middle" style="font-size:21px">1</text><text class="sub-label" x="62" y="96" text-anchor="middle">q1</text></g>
+          <g><circle class="core" cx="152" cy="80" r="30"/><text class="node-label" x="152" y="78" text-anchor="middle" style="font-size:21px">2</text><text class="sub-label" x="152" y="96" text-anchor="middle">q0</text></g>
+          <g><circle class="core" cx="242" cy="80" r="30"/><text class="node-label" x="242" y="78" text-anchor="middle" style="font-size:21px">3</text><text class="sub-label" x="242" y="96" text-anchor="middle">q1</text></g>
+          <g><circle class="core" cx="332" cy="80" r="30"/><text class="node-label" x="332" y="78" text-anchor="middle" style="font-size:21px">4</text><text class="sub-label" x="332" y="96" text-anchor="middle">q0</text></g>
+          <path class="edge edge--ghost" d="M62,110 C62,178 332,178 352,196"/>
+          <path class="edge edge--ghost" d="M152,110 C152,166 340,164 356,194"/>
+          <path class="edge edge--ghost" d="M242,110 C242,152 346,150 360,192"/>
+          <circle class="core" cx="368" cy="212" r="24"/>
+          <text class="node-label" x="368" y="219" text-anchor="middle" style="font-size:19px">qd</text>
+          <text class="small" x="180" y="152">fading paths = steps already passed</text>
+        </svg>
+      </div>
+      <p class="board__text" style="margin-top:12px">The <strong>run</strong>. The large label is a step
+        counter and must never be read as a state; the small label underneath is the one that decides
+        acceptance. <code>qd</code> is drawn only by reference and is never taken.</p>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="Input validation" data-steps="2">
+  <header class="slide__head">
+    <p class="kicker">12 &middot; Input validation</p>
+    <h2 class="slide__title">The machine never saw it</h2>
+  </header>
+  <div class="slide__body lay-split lay-split--wide-left">
+    <div class="lay-stack">
+      <div class="board" data-step="0" style="padding-top:30px">
+        <h3 class="tag">Input &middot; 1021</h3>
+        <ol class="tape" aria-label="The invalid input 1021">
+          <li class="cell"><span class="sym">1</span><span class="idx">1</span></li>
+          <li class="cell is-invalid"><span class="sym">2</span><span class="idx">2</span><span class="mark">not in &Sigma;</span></li>
+          <li class="cell"><span class="sym">1</span><span class="idx">3</span></li>
+        </ol>
+      </div>
+      <div class="board" data-step="1" style="padding-top:30px;border-color:var(--reject);border-width:2px">
+        <h3 class="tag">Result &middot; alert</h3>
+        <p class="no" style="font-weight:600;margin:0 0 4px">&#10005; ERROR: Invalid input. The DFA only accepts the symbols 0 and 1.</p>
+        <ul style="margin:0 0 8px;padding-left:20px;font-size:15px">
+          <li>Found &ldquo;2&rdquo; at position 3.</li>
+        </ul>
+        <p class="slide__note">Remove the highlighted symbol and check again.</p>
+        <p class="verdict is-idle" style="margin-top:14px"><span class="icon" aria-hidden="true">&ndash;</span>No result.</p>
+      </div>
+    </div>
+    <div class="lay-stack">
+      <div class="callout" data-step="0">
+        <p><strong>An invalid string is never reported as accepted or rejected.</strong> Validation runs
+          before the automaton, so the machine never saw this input &mdash; there are no steps, no flow,
+          and no final state to report.</p>
+      </div>
+      <div class="board" data-step="1" style="padding-top:30px">
+        <h3 class="tag">The rule</h3>
+        <dl class="defn">
+          <dt>Alphabet</dt><dd>&Sigma; = {0, 1}</dd>
+          <dt>Positions</dt><dd>1-based</dd>
+          <dt>Whitespace</dt><dd>never trimmed</dd>
+          <dt>On error</dt><dd>{ status: &quot;invalid&quot;, errors: [{ symbol, index }] }</dd>
+          <dt>Rendered</dt><dd>nothing except the message</dd>
+        </dl>
+        <p class="slide__note" style="margin-top:14px">The same rule covers <code>10a1</code>,
+          <code>10 1</code>, <code>101&nbsp;</code>, <code>2</code> and <code>abc</code>. Eight of the
+          29 oracle cases are invalid inputs, and none of them reach the automaton.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="Integrity &amp; recovery" data-steps="2">
+  <header class="slide__head">
+    <p class="kicker">14 &middot; Reliability</p>
+    <h2 class="slide__title">A launch that repairs itself</h2>
+  </header>
+  <div class="slide__body lay-stack">
+    <div class="fig" data-step="0" style="background:var(--surface);border:1px solid var(--graphite);border-radius:var(--radius);padding:16px 18px">
+      <svg viewBox="0 0 1120 210" role="img" aria-label="Integrity pipeline: the five essential files are compared against an approved SHA-256 baseline; a difference must persist for seven seconds before it counts as damage; the approved copy is restored atomically and the app restarts once.">
+        <defs><marker id="s13ah" viewBox="0 -4.6 12 9.2" refX="11" refY="0" markerWidth="11" markerHeight="9.2" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,4.6 L11,0 L0,-4.6 z"/></marker></defs>
+
+        <rect class="box" x="4" y="26" width="196" height="120" rx="2"/>
+        <text class="small" x="18" y="50">ESSENTIAL FILES</text>
+        <text class="label" x="18" y="76">app.py &middot; dfa.py</text>
+        <text class="label" x="18" y="98">index.html</text>
+        <text class="label" x="18" y="120">script.js &middot; styles.css</text>
+        <text class="small" x="18" y="138">a non-essential file is never</text>
+        <text class="small" x="18" y="152">backed up and never restored</text>
+
+        <path class="wire wire--ink" d="M206,86 L268,86" marker-end="url(#s13ah)"/>
+        <text class="small" x="237" y="74" text-anchor="middle">SHA-256</text>
+
+        <rect class="box box--accent" x="276" y="26" width="196" height="120" rx="2"/>
+        <text class="small" x="290" y="50" style="fill:var(--on-highlight)">CONFIRM WINDOW</text>
+        <text class="label" x="290" y="88" style="font-size:26px;fill:var(--on-highlight)">7 s</text>
+        <text class="small" x="290" y="112" style="fill:var(--on-highlight)">a change must persist</text>
+        <text class="small" x="290" y="128" style="fill:var(--on-highlight)">before it is damage,</text>
+        <text class="small" x="290" y="142" style="fill:var(--on-highlight)">so a two-part save survives</text>
+
+        <path class="wire wire--ink" d="M478,86 L540,86" marker-end="url(#s13ah)"/>
+        <text class="small" x="509" y="74" text-anchor="middle">differs</text>
+
+        <rect class="box" x="548" y="26" width="196" height="120" rx="2"/>
+        <text class="small" x="562" y="50">ATOMIC RESTORE</text>
+        <text class="label" x="562" y="76">temp file in the same</text>
+        <text class="label" x="562" y="98">directory, then</text>
+        <text class="label" x="562" y="120">os.replace</text>
+        <text class="small" x="562" y="140">digest re-checked after</text>
+
+        <path class="wire wire--ink" d="M750,86 L812,86" marker-end="url(#s13ah)"/>
+        <text class="small" x="781" y="74" text-anchor="middle">verified</text>
+
+        <rect class="box" x="820" y="26" width="120" height="120" rx="2"/>
+        <text class="small" x="834" y="50">ONE RESTART</text>
+        <text class="label" x="834" y="88" style="font-size:22px">then give up</text>
+        <text class="small" x="834" y="120">MAX_REPAIRS = 8</text>
+
+        <rect class="box" x="960" y="26" width="156" height="120" rx="2"/>
+        <text class="small" x="974" y="50">RECOVERY SUITE</text>
+        <text class="label" x="974" y="92" style="font-size:30px">42</text>
+        <text class="small" x="974" y="116">checks, all passing</text>
+        <text class="small" x="974" y="132">against throwaway copies</text>
+
+        <text class="small" x="4" y="182">Approval is a separate, deliberate act: &#8212;approve-current validates every file, runs the dfa.py oracle, and only then records the new baseline.</text>
+      </svg>
+    </div>
+
+    <div class="lay-split" data-step="1">
+      <div class="board board--plain">
+        <h3 class="tag">Rules it follows</h3>
+        <ul class="checks">
+          <li><span class="box box--plain" aria-hidden="true">&middot;</span><span>A restore that does not verify is reported as a <strong>failure</strong>, not a success.</span></li>
+          <li><span class="box box--plain" aria-hidden="true">&middot;</span><span>One restart, then stop at <code>MAX_REPAIRS</code> (8) instead of looping for ever.</span></li>
+          <li><span class="box box--plain" aria-hidden="true">&middot;</span><span>An app that exits inside <code>LAUNCH_GRACE_S</code> (10 s) is retried once.</span></li>
+        </ul>
+      </div>
+      <div class="board board--plain">
+        <h3 class="tag">Honesty about a missing baseline</h3>
+        <ul class="checks">
+          <li><span class="box box--plain" aria-hidden="true">&middot;</span><span>If the manifest or backups are gone, the launcher says integrity cannot be checked. It does not claim a guarantee it cannot make.</span></li>
+          <li><span class="box box--plain" aria-hidden="true">&middot;</span><span><code>--maintenance</code> suspends restoration entirely, including the pre-launch check, so deliberate work is not undone.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="Design system" data-steps="3">
+  <header class="slide__head">
+    <p class="kicker">15 &middot; Visual system</p>
+    <h2 class="slide__title slide__title--wide">Tokens, three themes, one motion doctrine</h2>
+  </header>
+  <div class="slide__body lay-split">
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">Colour &middot; tokens only</h3>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background:var(--paper);border-bottom-color:var(--graphite)"></div><div class="meta"><b>--paper</b><span>page</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--surface);border-bottom-color:var(--graphite)"></div><div class="meta"><b>--surface</b><span>panels</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--ink)"></div><div class="meta"><b>--ink</b><span>text, strokes</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--graphite)"></div><div class="meta"><b>--graphite</b><span>secondary</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--highlight)"></div><div class="meta"><b>--highlight</b><span>attention</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--accept)"></div><div class="meta"><b>--accept</b><span>verdict</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--reject)"></div><div class="meta"><b>--reject</b><span>verdict</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--focus)"></div><div class="meta"><b>--focus</b><span>taken edge</span></div></div>
+      </div>
+      <p class="slide__note" style="margin-top:14px">A theme is a block of token values and nothing else.
+        No hex value appears in a component rule, in <code>script.js</code>, or in this deck.</p>
+    </div>
+
+    <div class="lay-stack">
+      <div class="board" data-step="1" style="padding-top:30px">
+        <h3 class="tag">Themes</h3>
+        <dl class="defn">
+          <dt>Textbook</dt><dd>light &mdash; the default on paper</dd>
+          <dt>Night</dt><dd>dark &mdash; follows the OS when nothing is chosen</dd>
+          <dt>High contrast</dt><dd>black and white; the graph paper disappears, because it carries no information</dd>
+          <dt>on-highlight</dt><dd>flips per theme, on purpose: ink on the highlight is 11.32:1 in light and 1.42:1 in dark</dd>
+        </dl>
+      </div>
+      <div class="board board--plain" data-step="2">
+        <h3 class="tag">Motion doctrine</h3>
+        <ul class="checks">
+          <li><span class="box box--plain" aria-hidden="true">&middot;</span><span>Transform and opacity only, plus the existing <code>stroke-dashoffset</code> arrow draw.</span></li>
+          <li><span class="box box--plain" aria-hidden="true">&middot;</span><span>One animated moment: the walk. Everything else renders before it.</span></li>
+          <li><span class="box box--plain" aria-hidden="true">&middot;</span><span>Reduced motion gets a <strong>static state</strong>, not a shorter one.</span></li>
+          <li><span class="box box--plain" aria-hidden="true">&middot;</span><span>One easing set, one arrival function, nothing loops.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="full" data-title="Verification &amp; the build path" data-steps="2">
+  <header class="slide__head">
+    <p class="kicker">16 &middot; Verification</p>
+    <h2 class="slide__title slide__title--wide">What is checked, what is not, and how we got here</h2>
+  </header>
+  <div class="slide__body lay-split">
+    <div class="board" data-step="0" style="padding-top:30px">
+      <h3 class="tag">Verified</h3>
+      <ul class="checks">
+        <li><span class="box" aria-hidden="true">&#10003;</span><span><code>python dfa.py</code> &mdash; 29 of 29, each asserting acceptance and the final state.</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span><code>node --check script.js</code> &mdash; clean.</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span><code>python run_decider.py --verify</code> &mdash; every essential file matches the baseline.</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>42 recovery checks against throwaway copies, all passing: deleted function, invalid Python, invalid JavaScript, deleted file, truncated file, a persistent modification (restored in 9.3&nbsp;s), a two-part save correctly ignored, missing backup, corrupt manifest, digest mismatch, loop prevention, maintenance mode, approval refused and accepted, staged-file validation.</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span>In-app, through a stubbed bridge: <code>1</code>, <code>101</code>, <code>1010</code>, <code>10101</code>, <code>0101</code>, <code>11111</code>, <code>00000</code>, empty, and <code>1021</code> &rarr; invalid with no verdict shown.</span></li>
+        <li><span class="box" aria-hidden="true">&#10003;</span><span><code>10101</code> &rarr; flow <code>q0 &rarr; q1 &rarr; q0 &rarr; q1 &rarr; q0 &rarr; q1</code>, matching the brief's worked example symbol for symbol.</span></li>
+      </ul>
+    </div>
+    <div class="board" data-step="1" style="padding-top:30px;border-color:var(--reject);border-width:2px">
+      <h3 class="tag">Not verified &middot; stated, not implied</h3>
+      <ul class="checks">
+        <li><span class="box no" style="background:transparent;border-color:var(--reject);color:var(--reject)" aria-hidden="true">&middot;</span><span><strong>PyWebView itself.</strong> Every check ran against a stubbed bridge or in process against copies, with the restart step stubbed. A real GUI launch and a genuine restart-after-repair are still untested.</span></li>
+        <li><span class="box no" style="background:transparent;border-color:var(--reject);color:var(--reject)" aria-hidden="true">&middot;</span><span><strong>Other engines.</strong> Windows WebView2, Firefox and Safari untested &mdash; only Chromium.</span></li>
+        <li><span class="box no" style="background:transparent;border-color:var(--reject);color:var(--reject)" aria-hidden="true">&middot;</span><span><strong>Screen readers</strong> untested.</span></li>
+        <li><span class="box no" style="background:transparent;border-color:var(--reject);color:var(--reject)" aria-hidden="true">&middot;</span><span>Night and High contrast were checked by contrast figures, not reviewed visually.</span></li>
+        <li><span class="box no" style="background:transparent;border-color:var(--reject);color:var(--reject)" aria-hidden="true">&middot;</span><span>The reduced-motion Display note is a CSS media query a JavaScript <code>matchMedia</code> override cannot trigger &mdash; it needs DevTools emulation.</span></li>
+      </ul>
+      <div class="callout" style="margin-top:16px">
+        <p style="font-size:15px">Report any check that fails rather than describing the work as complete.</p>
+      </div>
+    </div>
+    <div class="board dense" data-step="2" style="padding-top:30px">
+      <h3 class="tag">The build path &middot; how the machine got here</h3>
+      <table class="tbl">
+        <thead><tr><th scope="col">Build</th><th scope="col">States</th><th scope="col">Language</th><th scope="col">Verdict</th></tr></thead>
+        <tbody>
+          <tr>
+            <th scope="row">original</th><td>q0 q1 q2 q3 qd</td>
+            <td>exactly 101</td>
+            <td class="no">wrong &mdash; needs a trap, rejects 0101 and 11111</td>
+          </tr>
+          <tr>
+            <th scope="row">interim</th><td>q0 q1 q2 q3</td>
+            <td>contains 101</td>
+            <td class="no">wrong &mdash; not the assigned language</td>
+          </tr>
+          <tr class="is-active">
+            <th scope="row">current</th><td>q0 q1</td>
+            <td>ends in 1</td>
+            <td class="ok">matches the brief</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="slide__note" style="margin-top:10px">The oracle was rebuilt <em>with</em> the machine rather than
+        being allowed to dictate it. That is why there are 29 cases here and not the ten in the brief.</p>
+    </div>
+  </div>
+</section>
+<section class="slide" data-layout="hero" data-title="Closing" data-steps="0" aria-label="Closing">
+  <div class="hero">
+    <p class="kicker">Takeaway</p>
+    <h2 class="hero__title" style="font-size:64px"><span class="letter" style="--at:.16s">D</span><span class="letter" style="--at:.23s">e</span><span class="letter" style="--at:.30s">c</span><span class="letter" style="--at:.37s">i</span><span class="letter" style="--at:.44s">d</span><span class="letter" style="--at:.51s">e</span><span class="letter" style="--at:.58s">r</span></h2>
+    <hr class="hero__rule">
+    <p class="hero__sub" style="max-width:44ch">One machine. One source of truth. Every decision visible.</p>
+
+    <div class="plate plate--tight fig" style="width:226px">
+      <svg viewBox="0 0 420 260" role="img" aria-label="The two-state machine, q0 and q1, one last time.">
+        <defs><marker id="s16ah" viewBox="0 -4.6 12 9.2" refX="11" refY="0" markerWidth="11" markerHeight="9.2" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,4.6 L11,0 L0,-4.6 z"/></marker></defs>
+        <path class="edge draw" pathLength="1" style="--at:1.10s;--draw-dur:420ms" d="M20,120 L66,120"/>
+        <path class="edge draw" pathLength="1" style="--at:1.22s;--draw-dur:420ms" d="M134,120 L188,120"/>
+        <path class="edge draw" pathLength="1" style="--at:1.46s;--draw-dur:520ms" d="M205.91,154.4 C205.91,214.4 119.5,207.85 119.5,147.85"/>
+        <path class="edge draw" pathLength="1" style="--at:1.70s;--draw-dur:520ms" d="M66.22,100.5 C57.78,37 142.22,37 133.78,100.5"/>
+        <path class="edge draw" pathLength="1" style="--at:1.94s;--draw-dur:520ms" d="M189.3,96.5 C179.12,29 280.88,29 270.7,96.5"/>
+        <g style="--at:1.10s"><path class="edge" d="M66,120 L55,114.7 L55,125.3 Z" fill="var(--ink)" stroke="none"/></g>
+        <g style="--at:1.22s"><path class="edge" d="M188,120 L177,114.7 L177,125.3 Z" fill="var(--ink)" stroke="none"/></g>
+        <g style="--at:1.46s"><path class="edge" d="M119.5,147.9 L123.6,137 L114.6,138.9 Z" fill="var(--ink)" stroke="none"/></g>
+        <g style="--at:1.70s"><path class="edge" d="M133.8,100.5 L131.3,89 L122.1,92.9 Z" fill="var(--ink)" stroke="none"/></g>
+        <g style="--at:1.94s"><path class="edge" d="M270.7,96.5 L268.2,85 L259,88.9 Z" fill="var(--ink)" stroke="none"/></g>
+        <text class="edge-label" x="161" y="106" text-anchor="middle" style="--at:1.70s">1</text>
+        <text class="edge-label" x="162.7" y="220" text-anchor="middle" style="--at:1.82s">0</text>
+        <text class="edge-label" x="100" y="36" text-anchor="middle" style="--at:1.94s">0</text>
+        <text class="edge-label" x="230" y="29" text-anchor="middle" style="--at:2.06s">1</text>
+        <g class="state" style="--at:0.96s">
+          <circle class="core" cx="100" cy="120" r="34"/>
+          <text class="node-label" x="100" y="128" text-anchor="middle">q0</text>
+        </g>
+        <g class="state" style="--at:1.04s">
+          <circle class="ring" cx="230" cy="120" r="42"/>
+          <circle class="core" cx="230" cy="120" r="34"/>
+          <text class="node-label" x="230" y="128" text-anchor="middle">q1</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="chips" style="max-width:900px">
+      <span class="chip is-key">SYSTEM_CONTEXT.md &middot; authoritative</span>
+      <span class="chip">dfa.py</span>
+      <span class="chip">app.py</span>
+      <span class="chip">index.html</span>
+      <span class="chip">styles.css</span>
+      <span class="chip">script.js</span>
+      <span class="chip">run_decider.py</span>
+      <span class="chip is-stale">HANDOFF.md</span>
+      <span class="chip is-stale">VISUAL_DESIGN_CONTEXT.md</span>
+    </div>
+    <p class="hero__foot">AL102 Automata Theory midterm &middot; press <strong>?</strong> for the controls &middot;
+      press <strong>Home</strong> to start again</p>
+  </div>
+</section>
+
+      <div class="wipe" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <footer class="chrome">
+    <span class="chrome__title">Decider</span>
+    <div class="rail" role="progressbar" aria-label="Deck progress" aria-valuemin="1" aria-valuemax="17" aria-valuenow="1">
+      <div class="rail__fill" id="rail-fill"></div>
+      <div class="rail__ticks" id="rail-ticks" aria-hidden="true"></div>
+    </div>
+    <span class="chrome__count" id="counter">1 / 16</span>
+    <span class="chrome__label" id="slide-name">Decider</span>
+    <button type="button" class="chrome__btn" id="btn-prev" aria-label="Previous slide">&larr;</button>
+    <button type="button" class="chrome__btn" id="btn-next" aria-label="Next slide">&rarr;</button>
+    <button type="button" class="chrome__btn" id="btn-full" aria-pressed="false">Full&nbsp;screen&nbsp;(F)</button>
+    <button type="button" class="chrome__btn" id="btn-theme">Theme</button>
+    <button type="button" class="chrome__btn" id="btn-help" aria-haspopup="dialog">?</button>
+  </footer>
+</div>
+
+<div class="help" id="help" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="help__card">
+    <h2 id="help-title">Presentation controls</h2>
+    <p class="sub">Every control is a key. You never need the mouse.</p>
+    <div class="help__grid">
+      <div class="help__row"><span>Next step, then next slide</span><kbd>&rarr; &darr; Space</kbd></div>
+      <div class="help__row"><span>Previous step, then previous slide</span><kbd>&larr; &uarr;</kbd></div>
+      <div class="help__row"><span>Next slide directly</span><kbd>Page&nbsp;Down</kbd></div>
+      <div class="help__row"><span>Previous slide directly</span><kbd>Page&nbsp;Up</kbd></div>
+      <div class="help__row"><span>First slide</span><kbd>Home</kbd></div>
+      <div class="help__row"><span>Last slide</span><kbd>End</kbd></div>
+      <div class="help__row"><span>Toggle full screen</span><kbd>F</kbd></div>
+      <div class="help__row"><span>Exit full screen</span><kbd>Esc</kbd></div>
+      <div class="help__row"><span>This panel</span><kbd>?</kbd></div>
+      <div class="help__row"><span>Cycle appearance</span><kbd>T</kbd></div>
+      <div class="help__row"><span>Back to the checker</span><kbd>Alt&nbsp;+&nbsp;Home</kbd></div>
+    </div>
+    <p class="help__foot">A slide with staged content reveals one step per keypress, and the last keypress
+      moves on. Reduced motion is honoured: the deck becomes a static set of slides and every step is
+      shown at once.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+<script src="presentation.js"></script>
+</body>
+</html>

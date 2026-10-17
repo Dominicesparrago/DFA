@@ -1,0 +1,238 @@
+<!doctype html>
+  <!-- Decider - a DFA acceptance checker (AL102 automata theory midterm).
+
+       The machine recognises every binary string that ends in 1:
+
+           delta(q0, 0) = q0      delta(q0, 1) = q1
+           delta(q1, 0) = q0      delta(q1, 1) = q1
+
+           q0  the input read so far is empty or ends in 0
+           q1  the input read so far ends in 1
+
+       Two states, no dead state: every state is reachable on both symbols, so no
+       input can get stuck. A string is accepted exactly when it finishes in q1.
+
+       index.html holds only the two state groups, the marker and the position
+       track. script.js reads the transition table below and generates every
+       arrow and every arrow label from it, so the diagram cannot drift from the
+       machine in dfa.py.
+
+       The double ring around q1 is part of the machine's permanent definition,
+       not an effect of a check.
+
+       The diagram above holds the machine and nothing else. Execution steps are
+       generated into their own Execution Steps panel, one row per input symbol,
+       so a generated step can never be mistaken for a state. -->
+
+  <html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Decider</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page">
+
+<header id="header" class="page-head">
+  <h1>Decider</h1>
+  <p>This machine accepts every binary string that ends in <span class="accent">1</span>.</p>
+</header>
+
+<main class="workspace">
+
+  <div class="rail">
+
+    <section id="input-panel" class="panel panel--input" aria-labelledby="h-input">
+      <h2 id="h-input">Input</h2>
+      <div class="input-row">
+        <div class="field">
+          <label for="dfa-input">Binary string</label>
+          <input id="dfa-input" type="text" autocomplete="off" spellcheck="false" inputmode="text" aria-describedby="dfa-help">
+          <p id="dfa-help" class="help">Only 0 and 1 are allowed.</p>
+        </div>
+        <div class="btn-row">
+          <button id="check-btn" class="btn btn--primary" type="button" disabled>Check string</button>
+          <button id="clear-btn" class="btn btn--secondary" type="button">Clear</button>
+        </div>
+      </div>
+      <div class="examples">
+        <span>Examples:</span>
+        <button id="example-1" class="btn btn--link" type="button">1</button>
+        <button id="example-2" class="btn btn--link" type="button">0</button>
+        <button id="example-3" class="btn btn--link" type="button">101</button>
+        <button id="example-4" class="btn btn--link" type="button">1021</button>
+      </div>
+    </section>
+
+    <section class="panel panel--result" aria-labelledby="h-result">
+      <h2 id="h-result">Result</h2>
+      <div id="error" class="error" role="alert" hidden>
+        <p class="err-head"><span class="icon" aria-hidden="true">✕</span><span id="error-head">ERROR: Invalid input. The DFA only accepts the symbols 0 and 1.</span></p>
+        <div id="error-details"></div>
+        <p id="error-action">Remove the highlighted symbol and check again.</p>
+      </div>
+      <div id="result" class="result result--idle" role="status" aria-live="polite"></div>
+    </section>
+
+  </div>
+
+  <div class="stage">
+
+    <section class="panel panel--figure" aria-labelledby="h-figure">
+      <h2 id="h-figure">Figure</h2>
+      <div class="seg" role="group" aria-label="Diagram">
+        <button type="button" class="seg__btn is-on" data-machine="simple" aria-pressed="true">Simple diagram</button>
+        <button type="button" class="seg__btn" data-machine="longer" aria-pressed="false">Longer diagram</button>
+      </div>
+      <p id="figure-legend" class="figure-legend" hidden>node = step number &middot; small label = DFA state &middot; dashed = dead-state reference</p>
+      <div id="trace-controls" class="trace-controls" role="group" aria-label="Trace playback" hidden>
+        <button type="button" id="trace-play" class="btn btn--secondary btn--sm">Play</button>
+        <button type="button" id="trace-pause" class="btn btn--secondary btn--sm">Pause</button>
+        <button type="button" id="trace-replay" class="btn btn--secondary btn--sm">Replay</button>
+        <button type="button" id="trace-fwd" class="btn btn--secondary btn--sm">Step &#8594;</button>
+        <button type="button" id="trace-back" class="btn btn--secondary btn--sm">&#8592; Step</button>
+        <span id="trace-position" class="trace-position" aria-live="polite"></span>
+      </div>
+      <figure class="figure" id="dfa-figure">
+        <div class="svg-box" role="region" aria-label="Figure">
+        <svg id="dfa-svg" viewBox="0 0 420 260" role="img" aria-labelledby="dfa-title dfa-desc" class="is-dim">
+          <title id="dfa-title">Two-state DFA that accepts every binary string ending in 1</title>
+          <desc id="dfa-desc">Two states, q0 and q1, each named inside its circle. q0 is the start state, marked by an arrow with no source; the start arrow carries no symbol. q1 is the accepting state and is drawn with a double ring, which is part of the machine's definition rather than a result of a check. q0 means the input read so far is empty or ends in 0, and q1 means it ends in 1. Reading 0 in q0 stays in q0; reading 1 in q0 goes to q1; reading 0 in q1 goes to q0; reading 1 in q1 stays in q1. There is no dead state, because both symbols are defined in both states and no input can get stuck. A string is accepted exactly when it finishes in q1, so 1, 11, 101, 11111 and 0101 are accepted while 0, 10, 1010, 00000 and the empty string are rejected. Execution steps are listed in their own Execution Steps panel, one row per input symbol, and are never drawn inside this diagram. The machine has exactly two states however long the input is.</desc>
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z"/>
+            </marker>
+          </defs>
+
+          <!-- start arrow: no source state -->
+
+          <!-- The two states, 130 units apart. q1 is the accepting state, so it
+               carries the double ring that marks acceptance in the definition.
+               Every arrow and arrow label is generated by script.js from the
+               transition table below. -->
+          <g id="node-q0" class="node">
+            <circle class="pulse" cx="100" cy="120" r="34" aria-hidden="true"/>
+            <circle class="core" cx="100" cy="120" r="34"/>
+            <text id="node-text-q0" class="node-label" x="100" y="128" text-anchor="middle">q0</text>
+          </g>
+          <g id="node-q1" class="node">
+            <circle class="pulse" cx="230" cy="120" r="34" aria-hidden="true"/>
+            <circle class="ring" cx="230" cy="120" r="42"/>
+            <circle class="core" cx="230" cy="120" r="34"/>
+            <text id="node-text-q1" class="node-label" x="230" y="128" text-anchor="middle">q1</text>
+          </g>
+
+
+          <!-- walk token: moved by transform along the taken edge; hidden at rest -->
+          <circle id="walk-token" class="walk-token" cx="0" cy="0" r="7" aria-hidden="true"/>
+
+        </svg>
+        </div>
+        <figcaption id="figure-caption">Figure 1. The machine.</figcaption>
+        <p id="figure-result" class="figure-result" hidden></p>
+      </figure>
+    </section>
+
+    <section class="panel panel--tape" aria-labelledby="h-tape">
+      <h2 id="h-tape">Tape</h2>
+      <ol id="tape" class="tape" aria-label="Input tape"></ol>
+    </section>
+
+    <section class="panel panel--flow" aria-labelledby="h-flow">
+    <h2 id="h-flow">State flow</h2>
+    <ol id="flow" class="flow" aria-label="Complete state flow, one state per position including the start and the final state"></ol>
+    </section>
+
+    <section class="panel panel--steps" aria-labelledby="h-steps">
+      <h2 id="h-steps">Execution Steps</h2>
+      <p class="help">Generated from the steps Python returned, one row per input symbol. These are
+        execution steps, not states: the machine above always has exactly two.</p>
+      <div id="steps" class="scroll" role="region" aria-label="Execution steps">
+        <table id="steps-table">
+          <thead><tr><th scope="col">Step</th><th scope="col">Symbol</th><th scope="col">Transition</th><th scope="col">State</th></tr></thead>
+          <tbody id="steps-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel panel--ref" aria-labelledby="h-ref">
+      <h2 id="h-ref">Transition function</h2>
+      <div id="dfa-reference">
+        <table id="transition-table">
+          <caption>Table 1. Transition function.</caption>
+          <thead><tr><th scope="col">State</th><th scope="col">Input 0</th><th scope="col">Input 1</th></tr></thead>
+          <tbody>
+            <tr id="trow-q0"><th scope="row">&#8594; q0 (start)</th><td>q0</td><td>q1</td></tr>
+            <tr id="trow-q1"><th scope="row">* q1 (accepting)</th><td>q0</td><td>q1</td></tr>
+          </tbody>
+        </table>
+        <section class="defn-block" aria-labelledby="h-defn">
+          <h2 id="h-defn">Definition</h2>
+          <dl class="defn">
+            <dt>States</dt><dd id="dd-states">Q = {q0, q1}</dd>
+            <dt>Alphabet</dt><dd>&#931; = {0, 1}</dd>
+            <dt>Start state</dt><dd id="dd-start">q0</dd>
+            <dt>Accepting</dt><dd id="dd-accepting">F = {q1}</dd>
+            <dt>Dead state</dt><dd id="dd-dead">none</dd>
+            <dt>Language</dt><dd id="dd-language">w ends in 1</dd>
+          </dl>
+        </section>
+      </div>
+    </section>
+
+    <section class="panel panel--tests" aria-labelledby="h-tests">
+      <h2 id="h-tests">Test cases</h2>
+      <div class="tests-row">
+        <button id="tests-btn" class="btn btn--secondary" type="button" disabled>Run test cases</button>
+        <p id="tests-summary" class="help tests-summary" aria-live="polite"></p>
+      </div>
+      <div id="tests-table" class="scroll" role="region" aria-label="Test cases">
+        <table>
+          <thead><tr><th scope="col">#</th><th scope="col">Input</th><th scope="col">Expected</th><th scope="col">Actual</th><th scope="col">Status</th></tr></thead>
+          <tbody id="tests-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</main>
+</div>
+
+<!-- Display: a floating button at the end of the reading order. It opens a menu with
+     the appearance and the flow timing. Both are native selects, so the keyboard and
+     screen readers get the same choices. The menu sits after the button in the
+     reading order, so Tab reaches it as soon as it is open. -->
+<div class="fab" id="fab">
+  <button id="fab-btn" class="fab-btn" type="button" aria-expanded="false" aria-controls="fab-menu">Display</button>
+  <div id="fab-menu" class="fab-menu" role="group" aria-label="Display settings" hidden>
+    <div class="menu-item">
+      <label for="theme-select">Appearance</label>
+      <select id="theme-select" autocomplete="off">
+        <option value="system">Follow system</option>
+        <option value="light">Textbook</option>
+        <option value="dark">Night</option>
+        <option value="contrast">High contrast</option>
+      </select>
+    </div>
+    <div class="menu-item">
+      <label for="timing-select">Flow timing</label>
+      <select id="timing-select" autocomplete="off">
+        <option value="0.2">0.2×</option>
+        <option value="0.5">0.5×</option>
+        <option value="0.75">0.75×</option>
+        <option value="1" selected>1×</option>
+        <option value="1.5">1.5×</option>
+        <option value="2">2×</option>
+      </select>
+    </div>
+    <p class="menu-note">Reduced motion is on, so the walk is shown at once and timing has no effect.</p>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
